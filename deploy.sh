@@ -1,1 +1,0 @@
-/Volumes/DatenAP/Code/vod.arkturian.com/.devops/deploy.sh

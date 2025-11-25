@@ -1,1 +1,0 @@
-/Volumes/DatenAP/Code/vod.arkturian.com/.devops/scripts/release.sh
