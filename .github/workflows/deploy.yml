@@ -1,13 +1,14 @@
-name: Build & Deploy
+name: Build & Deploy VOD
 
 on:
   push:
     branches:
+      - dev
       - main
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -17,17 +18,44 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci --production=false
+        run: npm install
 
       - name: Build application
         run: npm run build
-        env:
-          NODE_ENV: production
 
-      - name: Deploy to server
+      - name: Archive build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  deploy-staging:
+    name: Deploy to Staging (arkserver)
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/dev' && github.event_name == 'push') ||
+      (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://vod.arkserver.arkturian.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Deploy to Staging Server (arkserver)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -37,42 +65,118 @@ jobs:
           script: |
             set -e
 
-            REPO_PATH="/var/code/vod-server"
-            DEPLOY_PATH="/var/www/vod.arkturian.com"
+            REPO_URL="https://github.com/apopovic77/vod-server.git"
+            REPO_PATH="/opt/repos/vod-server"
+            DEPLOY_PATH="/var/www/vod.arkserver.arkturian.com"
             BACKUP_DIR="/var/backups"
-            BACKUP_PREFIX="vod-server"
+            BACKUP_PREFIX="vod-staging"
             TIMESTAMP=$(date +%Y%m%d-%H%M%S)
             BACKUP_PATH="$BACKUP_DIR/${BACKUP_PREFIX}-${TIMESTAMP}"
 
+            # Clone or update repo
+            if [ ! -d "$REPO_PATH" ]; then
+              echo "Cloning repository..."
+              mkdir -p /opt/repos
+              git clone "$REPO_URL" "$REPO_PATH"
+            fi
+
             cd "$REPO_PATH"
+            git fetch origin dev
+            git reset --hard origin/dev
 
-            git fetch origin main
-            git reset --hard origin/main
-
-            npm ci --production=false
-
-            npm run build
-
+            # Create backup
             if [ -d "$DEPLOY_PATH" ]; then
               echo "Creating backup..."
               mkdir -p "$BACKUP_DIR"
               cp -r "$DEPLOY_PATH" "$BACKUP_PATH"
+              echo "✅ Backup saved to: $BACKUP_PATH"
             fi
 
-            echo "Deploying new build..."
+            # Deploy
+            echo "Deploying Vite application..."
             mkdir -p "$DEPLOY_PATH"
-            rsync -av --delete "$REPO_PATH/dist/" "$DEPLOY_PATH/"
 
+            # Install dependencies and build
+            npm install
+            npm run build
+
+            # Copy build artifacts
+            rsync -av --delete \
+              --exclude='.git' \
+              --exclude='node_modules' \
+              --exclude='src' \
+              --exclude='.env' \
+              dist/ "$DEPLOY_PATH/"
+
+            # Set permissions
             chown -R www-data:www-data "$DEPLOY_PATH"
             chmod -R 755 "$DEPLOY_PATH"
 
-            echo "Deployment completed successfully!"
-            echo "Backup saved to: $BACKUP_PATH"
+            echo "✅ Staging deployment completed successfully!"
 
-      - name: Notify on success
-        if: success()
-        run: echo "✅ Deployment successful for commit ${{ github.sha }}"
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://vod.arkturian.com
 
-      - name: Notify on failure
-        if: failure()
-        run: echo "❌ Deployment failed for commit ${{ github.sha }}"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Deploy to Production Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_DEPLOY_HOST || secrets.DEPLOY_HOST }}
+          port: ${{ secrets.PROD_DEPLOY_PORT || secrets.DEPLOY_PORT || 22 }}
+          username: ${{ secrets.PROD_DEPLOY_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.PROD_DEPLOY_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+
+            REPO_PATH="/var/code/vod-server"
+            DEPLOY_PATH="/var/www/vod.arkturian.com"
+            BACKUP_DIR="/var/backups"
+            BACKUP_PREFIX="vod-production"
+            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+            BACKUP_PATH="$BACKUP_DIR/${BACKUP_PREFIX}-${TIMESTAMP}"
+
+            cd "$REPO_PATH"
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Create backup
+            if [ -d "$DEPLOY_PATH" ]; then
+              echo "Creating backup..."
+              mkdir -p "$BACKUP_DIR"
+              cp -r "$DEPLOY_PATH" "$BACKUP_PATH"
+              echo "✅ Backup saved to: $BACKUP_PATH"
+            fi
+
+            # Deploy
+            echo "Deploying Vite application..."
+            npm install
+            npm run build
+
+            mkdir -p "$DEPLOY_PATH"
+            rsync -av --delete \
+              --exclude='.git' \
+              --exclude='node_modules' \
+              --exclude='src' \
+              --exclude='.env' \
+              dist/ "$DEPLOY_PATH/"
+
+            # Set permissions
+            chown -R www-data:www-data "$DEPLOY_PATH"
+            chmod -R 755 "$DEPLOY_PATH"
+
+            echo "✅ Production deployment completed successfully!"
