@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 // @ts-ignore types present after deps install
 import { useSearchParams } from 'react-router-dom'
-import { Configuration, StorageApi } from '../../sdk'
+import { Configuration, StorageApi } from 'arkturian-storage-sdk'
 import RadialAudioPlayer from '../components/RadialAudioPlayer'
 import VodPlayer from '../components/VodPlayer'
 import MediaInfoCard from '../components/MediaInfoCard'
@@ -21,7 +21,7 @@ type MediaItem = {
   ai_safety_error?: string
 }
 
-const API_BASE_URL = 'https://api.arkturian.com'
+const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
 export default function ImageShare(){
@@ -204,16 +204,16 @@ export default function ImageShare(){
           setGroupLinkId(linkIdToUse)
         } catch {}
       }
-      const { data } = await sdkRef.current.uploadFileStorageUploadPost(
-        file,
-        API_KEY,
-        undefined,
-        true,
-        undefined,
-        item?.collection_id || undefined,
-        linkIdToUse,
-        true
-      )
+      const { data } = await sdkRef.current.uploadFileStorageUploadPost({
+        file: file,
+        xAPIKEY: API_KEY,
+        context: undefined,
+        isPublic: true,
+        ownerEmail: undefined,
+        collectionId: item?.collection_id || undefined,
+        linkId: linkIdToUse,
+        analyze: true
+      })
       try{
         const id = (data as any)?.id
         if(id){

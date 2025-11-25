@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Configuration, StorageApi } from '../../sdk'
+import { Configuration, StorageApi } from 'arkturian-storage-sdk'
 import { subscribeToAuth, signInWithGoogle, signOutUser, firebaseEnabled } from '../lib/firebase'
 // @ts-ignore types present after deps install
 import { useNavigate } from 'react-router-dom'
@@ -23,7 +23,7 @@ export default function FieldShareUpload(){
   const [useShaderBg, setUseShaderBg] = useState(false)
 
   useEffect(()=>{
-    const conf = new Configuration({ basePath: 'https://api.arkturian.com' })
+    const conf = new Configuration({ basePath: 'https://api-storage.arkturian.com' })
     sdkRef.current = new StorageApi(conf)
     if(firebaseEnabled){
       const unsub = subscribeToAuth(u=> setUserEmail(u?.email || ''))
@@ -113,21 +113,21 @@ export default function FieldShareUpload(){
       // Compute link_id from first non-empty file
       const linkId = await md5File(toUpload[0])
       for(const f of toUpload){
-        const { data } = await sdk.uploadFileStorageUploadPost(
-          f,
-          'Inetpass1',
-          undefined,
-          true,
-          userEmail || undefined,
-          collectionId || undefined,
-          linkId,
-          true
-        )
+        const { data } = await sdk.uploadFileStorageUploadPost({
+          file: f,
+          xAPIKEY: 'Inetpass1',
+          context: undefined,
+          isPublic: true,
+          ownerEmail: userEmail || undefined,
+          collectionId: collectionId || undefined,
+          linkId: linkId,
+          analyze: true
+        })
         // If SDK supports link_id, we would send it in body; since current generated client only sends form fields, we can re-PATCH to set link_id
         try{
           const id = (data as any)?.id
           if(id){
-            await fetch(`https://api.arkturian.com/storage/objects/${id}`, { method:'PATCH', headers:{ 'X-API-KEY':'Inetpass1', 'Content-Type':'application/json' }, body: JSON.stringify({ link_id: linkId }) })
+            await fetch(`https://api-storage.arkturian.com/storage/objects/${id}`, { method:'PATCH', headers:{ 'X-API-KEY':'Inetpass1', 'Content-Type':'application/json' }, body: JSON.stringify({ link_id: linkId }) })
           }
         } catch{}
         if((data as any)?.id){ uploadedIds.push((data as any).id as number) }

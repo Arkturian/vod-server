@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 // @ts-ignore types present after deps install
 import { useSearchParams } from 'react-router-dom'
-import { Configuration, StorageApi } from '../../sdk'
+import { Configuration, StorageApi } from 'arkturian-storage-sdk'
 import VodPlayer from '../components/VodPlayer'
 import { Download, Share2, Plus } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -20,7 +20,7 @@ type MediaItem = {
   ai_safety_rating?: string
 }
 
-const API_BASE_URL = 'https://api.arkturian.com'
+const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
 export default function ImageShareV3(){
@@ -159,16 +159,16 @@ export default function ImageShareV3(){
           setGroupLinkId(linkIdToUse)
         } catch {}
       }
-      const { data } = await sdkRef.current.uploadFileStorageUploadPost(
-        file,
-        API_KEY,
-        undefined,
-        true,
-        undefined,
-        item?.collection_id || undefined,
-        linkIdToUse,
-        true
-      )
+      const { data } = await sdkRef.current.uploadFileStorageUploadPost({
+        file: file,
+        xAPIKEY: API_KEY,
+        context: undefined,
+        isPublic: true,
+        ownerEmail: undefined,
+        collectionId: item?.collection_id || undefined,
+        linkId: linkIdToUse,
+        analyze: true
+      })
       try{
         const id = (data as any)?.id
         if(id){ await fetch(`${API_BASE_URL}/storage/objects/${id}`, { method:'PATCH', headers:{ 'X-API-KEY': API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ link_id: linkIdToUse }) }) }
