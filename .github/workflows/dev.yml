@@ -15,11 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate HTML files
-        run: echo 'Static HTML application - no validation needed'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --production=false
 
       - name: Run build
-        run: echo 'No build needed for static HTML application'
-
-      - name: Test complete
-        run: echo 'VOD server validation completed successfully'
+        run: npm run build
