@@ -18,7 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci --production=false
@@ -38,7 +37,7 @@ jobs:
           script: |
             set -e
 
-            REPO_PATH="/Volumes/DatenAP/Code/vod.arkturian.com"
+            REPO_PATH="/var/code/vod-server"
             DEPLOY_PATH="/var/www/vod.arkturian.com"
             BACKUP_DIR="/var/backups"
             BACKUP_PREFIX="vod-server"
