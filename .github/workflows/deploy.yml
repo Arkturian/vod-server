@@ -101,6 +101,13 @@ jobs:
 
             # Deploy
             echo "🚀 Deploying Vite application..."
+
+            # Clean node_modules to avoid corruption issues
+            if [ -d "node_modules" ]; then
+              echo "🧹 Cleaning node_modules..."
+              rm -rf node_modules
+            fi
+
             npm install
             npm run build
 
