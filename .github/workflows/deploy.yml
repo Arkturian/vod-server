@@ -3,7 +3,6 @@ name: Build & Deploy VOD
 on:
   push:
     branches:
-      - dev
       - main
   workflow_dispatch:
 
@@ -34,16 +33,23 @@ jobs:
           path: dist/
           retention-days: 1
 
-  deploy-staging:
-    name: Deploy to Staging (arkserver)
+  deploy:
+    name: Deploy to ${{ matrix.server.name }}
     needs: build
-    if: |
-      (github.ref == 'refs/heads/dev' && github.event_name == 'push') ||
-      (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch'))
     runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: https://vod.arkserver.arkturian.com
+    strategy:
+      matrix:
+        server:
+          - name: arkserver.arkturian.com
+            host_secret: DEPLOY_HOST_ARKSERVER
+            deploy_path: /var/www/vod.arkserver.arkturian.com
+            repo_path: /var/code/vod-server
+            url: https://vod.arkserver.arkturian.com
+          - name: arkturian.com
+            host_secret: DEPLOY_HOST
+            deploy_path: /var/www/vod.arkturian.com
+            repo_path: /var/code/vod-server
+            url: https://vod.arkturian.com
 
     steps:
       - name: Checkout code
@@ -55,115 +61,46 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Deploy to Staging Server (arkserver)
+      - name: Deploy to ${{ matrix.server.name }}
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
+          host: ${{ secrets[matrix.server.host_secret] }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
           script: |
             set -e
 
-            REPO_URL="https://github.com/apopovic77/vod-server.git"
-            REPO_PATH="/opt/repos/vod-server"
-            DEPLOY_PATH="/var/www/vod.arkserver.arkturian.com"
+            REPO_PATH="${{ matrix.server.repo_path }}"
+            DEPLOY_PATH="${{ matrix.server.deploy_path }}"
             BACKUP_DIR="/var/backups"
-            BACKUP_PREFIX="vod-staging"
+            BACKUP_PREFIX="vod-$(basename ${{ matrix.server.deploy_path }})"
             TIMESTAMP=$(date +%Y%m%d-%H%M%S)
             BACKUP_PATH="$BACKUP_DIR/${BACKUP_PREFIX}-${TIMESTAMP}"
 
-            # Clone or update repo
-            if [ ! -d "$REPO_PATH" ]; then
-              echo "Cloning repository..."
-              mkdir -p /opt/repos
-              git clone "$REPO_URL" "$REPO_PATH"
-            fi
+            echo "📂 Repository: $REPO_PATH"
+            echo "🎯 Deploy to: $DEPLOY_PATH"
+            echo "🌐 Server: ${{ matrix.server.name }}"
 
             cd "$REPO_PATH"
-            git fetch origin dev
-            git reset --hard origin/dev
 
-            # Create backup
-            if [ -d "$DEPLOY_PATH" ]; then
-              echo "Creating backup..."
-              mkdir -p "$BACKUP_DIR"
-              cp -r "$DEPLOY_PATH" "$BACKUP_PATH"
-              echo "✅ Backup saved to: $BACKUP_PATH"
-            fi
+            echo "🔧 Cleaning up git repository..."
+            git gc --prune=now
 
-            # Deploy
-            echo "Deploying Vite application..."
-            mkdir -p "$DEPLOY_PATH"
-
-            # Install dependencies and build
-            npm install
-            npm run build
-
-            # Copy build artifacts
-            rsync -av --delete \
-              --exclude='.git' \
-              --exclude='node_modules' \
-              --exclude='src' \
-              --exclude='.env' \
-              dist/ "$DEPLOY_PATH/"
-
-            # Set permissions
-            chown -R www-data:www-data "$DEPLOY_PATH"
-            chmod -R 755 "$DEPLOY_PATH"
-
-            echo "✅ Staging deployment completed successfully!"
-
-  deploy-production:
-    name: Deploy to Production
-    needs: build
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://vod.arkturian.com
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Deploy to Production Server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.PROD_DEPLOY_HOST || secrets.DEPLOY_HOST }}
-          port: ${{ secrets.PROD_DEPLOY_PORT || secrets.DEPLOY_PORT || 22 }}
-          username: ${{ secrets.PROD_DEPLOY_USER || secrets.DEPLOY_USER }}
-          key: ${{ secrets.PROD_DEPLOY_SSH_KEY || secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-
-            REPO_PATH="/var/code/vod-server"
-            DEPLOY_PATH="/var/www/vod.arkturian.com"
-            BACKUP_DIR="/var/backups"
-            BACKUP_PREFIX="vod-production"
-            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-            BACKUP_PATH="$BACKUP_DIR/${BACKUP_PREFIX}-${TIMESTAMP}"
-
-            cd "$REPO_PATH"
-            git fetch origin main
+            echo "🔄 Fetching latest code..."
+            git fetch origin --prune
             git reset --hard origin/main
 
             # Create backup
             if [ -d "$DEPLOY_PATH" ]; then
-              echo "Creating backup..."
+              echo "💾 Creating backup..."
               mkdir -p "$BACKUP_DIR"
               cp -r "$DEPLOY_PATH" "$BACKUP_PATH"
               echo "✅ Backup saved to: $BACKUP_PATH"
             fi
 
             # Deploy
-            echo "Deploying Vite application..."
+            echo "🚀 Deploying Vite application..."
             npm install
             npm run build
 
@@ -179,4 +116,20 @@ jobs:
             chown -R www-data:www-data "$DEPLOY_PATH"
             chmod -R 755 "$DEPLOY_PATH"
 
-            echo "✅ Production deployment completed successfully!"
+            echo "✅ Deployment completed successfully!"
+            echo "📁 Live at: ${{ matrix.server.url }}"
+            echo "💾 Backup: $BACKUP_PATH"
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Deployment successful to ${{ matrix.server.name }}!"
+          echo "📍 Site: ${{ matrix.server.url }}"
+          echo "📦 Commit: ${{ github.sha }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed for ${{ matrix.server.name }}"
+          echo "📦 Commit: ${{ github.sha }}"
+          echo "Check logs above for details"
