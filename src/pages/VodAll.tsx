@@ -19,7 +19,7 @@ export default function VodAll(){
     (async ()=>{
       try{
         setLoading(true)
-        const res = await fetch(`${API_BASE_URL}/storage/list?mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
+        const res = await fetch(`${API_BASE_URL}/storage/list`, { headers:{ 'X-API-KEY': API_KEY } })
         if(!res.ok) throw new Error('list failed')
         const data = await res.json()
         // Filter to only images and videos

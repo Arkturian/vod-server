@@ -80,7 +80,7 @@ export default function VodTheater(){
           setIndex(0)
         } else {
           // No params passed: pick the latest uploaded video
-          const res = await fetch(`${API_BASE_URL}/storage/list?mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
+          const res = await fetch(`${API_BASE_URL}/storage/list`, { headers:{ 'X-API-KEY': API_KEY } })
           if(res.ok){
             const data = await res.json()
             const items: VodItem[] = (data.items as VodItem[]).filter(i => i.hls_url)
