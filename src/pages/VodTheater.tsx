@@ -60,7 +60,7 @@ export default function VodTheater(){
       try{
         setLoading(true)
         if(collectionId){
-          const res = await fetch(`${API_BASE_URL}/storage/list?collection_id=${collectionId}`, { headers:{ 'X-API-KEY': API_KEY } })
+          const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&collection_id=${collectionId}`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('list failed')
           const data = await res.json()
           const items: VodItem[] = (data.items as VodItem[]).filter(i => i.hls_url)
@@ -80,7 +80,7 @@ export default function VodTheater(){
           setIndex(0)
         } else {
           // No params passed: pick the latest uploaded video
-          const res = await fetch(`${API_BASE_URL}/storage/list`, { headers:{ 'X-API-KEY': API_KEY } })
+          const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000`, { headers:{ 'X-API-KEY': API_KEY } })
           if(res.ok){
             const data = await res.json()
             const items: VodItem[] = (data.items as VodItem[]).filter(i => i.hls_url)
