@@ -31,7 +31,11 @@ export default function VodFusion(){
         const res = await fetch(`${API_BASE_URL}/storage/list?mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
         if(!res.ok) throw new Error('list failed')
         const data = await res.json()
-        const filtered: VodItem[] = (data.items as VodItem[]).filter(v => v.hls_url)
+        // Filter to only images and videos
+        const filtered: VodItem[] = (data.items as VodItem[]).filter(item => {
+          const mime = item.mime_type || ''
+          return mime.startsWith('image/') || mime.startsWith('video/')
+        })
         setItems(filtered)
       } catch(e){ setError('Could not load videos.') } finally { setLoading(false) }
     })()
