@@ -22,8 +22,11 @@ export default function VodAll(){
         const res = await fetch(`${API_BASE_URL}/storage/list?mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
         if(!res.ok) throw new Error('list failed')
         const data = await res.json()
-        // Show all media (images, videos, audio) - not just HLS videos
-        const allItems: VodItem[] = data.items as VodItem[]
+        // Filter to only images and videos
+        const allItems: VodItem[] = (data.items as VodItem[]).filter(item => {
+          const mime = item.mime_type || ''
+          return mime.startsWith('image/') || mime.startsWith('video/')
+        })
         setItems(allItems)
         setError(null)
       } catch(e){
