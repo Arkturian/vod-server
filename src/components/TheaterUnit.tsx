@@ -115,7 +115,17 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
         <div ref={miniContainerRef || undefined} style={{ width:'100%', height: playerHeight, ...(miniStyle || {}) }} onDoubleClick={onDoubleClick}>
           {renderMedia()}
         </div>
+      ) : isImage ? (
+        // For images in masonry: let image flow naturally without aspect-ratio container
+        <div ref={miniContainerRef || undefined} style={{ ...(miniStyle || {}) }} onDoubleClick={onDoubleClick}>
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'auto', borderRadius:8, display:'block' }} loading="lazy" />
+          ) : (
+            <div style={{ width:'100%', height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)', fontSize:32 }}>🖼️</div>
+          )}
+        </div>
       ) : (
+        // For videos: use aspect-ratio container
         <div style={{ position:'relative', width:'100%' }} onDoubleClick={onDoubleClick}>
           <div style={{ width:'100%', paddingTop: `${(1/ratio)*100}%` }} />
           <div ref={miniContainerRef || undefined} style={{ position:'absolute', inset:0, ...(miniStyle || {}) }}>
