@@ -22,12 +22,13 @@ export default function VodAll(){
         const res = await fetch(`${API_BASE_URL}/storage/list?mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
         if(!res.ok) throw new Error('list failed')
         const data = await res.json()
-        const filtered: VodItem[] = (data.items as VodItem[]).filter(v => v.hls_url)
-        setItems(filtered)
+        // Show all media (images, videos, audio) - not just HLS videos
+        const allItems: VodItem[] = data.items as VodItem[]
+        setItems(allItems)
         setError(null)
       } catch(e){
         console.error(e)
-        setError('Could not load video list.')
+        setError('Could not load media list.')
       } finally {
         setLoading(false)
       }
@@ -37,7 +38,7 @@ export default function VodAll(){
   return (
     <main role="main">
       <section className="section" aria-labelledby="vodall-title">
-        <h2 id="vodall-title" className="h2">All Videos</h2>
+        <h2 id="vodall-title" className="h2">All Media</h2>
         {loading && <p className="muted">Loading…</p>}
         {error && <p className="muted" style={{ color:'crimson' }}>{error}</p>}
         {!loading && !error && (
