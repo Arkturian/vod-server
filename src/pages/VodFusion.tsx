@@ -4,7 +4,7 @@ import { type VodPlayerHandle } from '../components/VodPlayer'
 
 type VodItem = VodItemType
 
-const API_BASE_URL = 'https://api.arkturian.com'
+const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
 export default function VodFusion(){
