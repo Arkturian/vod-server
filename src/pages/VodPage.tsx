@@ -11,7 +11,7 @@ type VodItem = {
   likes?: number
 }
 
-const API_BASE_URL = 'https://api.arkturian.com'
+const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
 export default function VodPage(){

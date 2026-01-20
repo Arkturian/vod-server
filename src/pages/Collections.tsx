@@ -19,7 +19,7 @@ type MediaItem = {
   collection_id?: string
 }
 
-const API_BASE_URL = 'https://api.arkturian.com'
+const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
 export default function Collections(){
