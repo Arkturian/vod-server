@@ -227,6 +227,17 @@ export default function ImageShareV2(){
     })
   }, [item, linkedItems])
 
+  // Only render active item + adjacent items for performance (prevents HTTP2 overload)
+  const visibleMedia = useMemo(()=>{
+    if(!navigableMedia.length) return []
+    const idx = navigableMedia.findIndex(m => m.id === activeId)
+    if(idx === -1) return navigableMedia.slice(0, 1)
+    const prev = (idx - 1 + navigableMedia.length) % navigableMedia.length
+    const next = (idx + 1) % navigableMedia.length
+    const indices = new Set([prev, idx, next])
+    return navigableMedia.filter((_, i) => indices.has(i))
+  }, [navigableMedia, activeId])
+
   useEffect(()=>{
     if(!activeId && navigableMedia.length){ setActiveId(navigableMedia[0].id) }
     else if(activeId && !navigableMedia.some(m=> m.id===activeId) && navigableMedia.length){ setActiveId(navigableMedia[0].id) }
@@ -392,7 +403,7 @@ export default function ImageShareV2(){
             {effectiveLayout === 'left' ? SidePanel : null}
             <div style={{ position:'relative', flex:1 }}>
               <div style={{ position:'relative', width:'100%', height:'100%' }}>
-                {navigableMedia.map(m => {
+                {visibleMedia.map(m => {
                   const isVideo = !!(m.mime_type && m.mime_type.startsWith('video/')) || !!(m as any).hls_url
                   const isImage = !!(m.mime_type && m.mime_type.startsWith('image/'))
                   if(isVideo){
@@ -404,7 +415,7 @@ export default function ImageShareV2(){
                   }
                   if(isImage){
                     return (
-                      <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} />
+                      <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} loading="lazy" />
                     )
                   }
                   return (
@@ -480,8 +491,8 @@ export default function ImageShareV2(){
     <main role="main">
       <section className="section section-full" aria-labelledby="imagesharev2-title" style={{ padding:0 }}>
         <div style={{ position:'relative', width:'100%', height:VISUAL_HEIGHT }}>
-          {/* Visuals */}
-          {navigableMedia.map(m => {
+          {/* Visuals - only render active + adjacent items for performance */}
+          {visibleMedia.map(m => {
             const isVideo = !!(m.mime_type && m.mime_type.startsWith('video/')) || !!(m as any).hls_url
             const isImage = !!(m.mime_type && m.mime_type.startsWith('image/'))
             if(isVideo){
@@ -493,7 +504,7 @@ export default function ImageShareV2(){
             }
             if(isImage){
               return (
-                <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} />
+                <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} loading="lazy" />
               )
             }
             const mt = (m.mime_type || '').toLowerCase()
