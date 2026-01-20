@@ -3,11 +3,13 @@ import VodPlayer, { type VodPlayerHandle } from './VodPlayer'
 
 export type VodItem = {
   id: number
-  hls_url: string
+  hls_url?: string | null
+  file_url?: string | null
   title?: string
   description?: string
   original_filename?: string
   thumbnail_url?: string
+  mime_type?: string
 }
 
 type Props = {
@@ -38,12 +40,31 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
   const playerHeight = fixedHeight ?? autoHeight
   const title = item.title || item.original_filename || '—'
 
+  // Check if item is a video (has hls_url or is video mime type)
+  const isVideo = !!item.hls_url || item.mime_type?.startsWith('video/')
+  const isImage = item.mime_type?.startsWith('image/')
+  const isAudio = item.mime_type?.startsWith('audio/')
+  const mediaSrc = item.hls_url || item.file_url
+  const thumbnailSrc = item.thumbnail_url || item.file_url
+
   if(mode === 'theater'){
+    if(!isVideo || !mediaSrc){
+      // Non-video: show thumbnail/image
+      return (
+        <div style={{ position:'relative', width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#111' }} onDoubleClick={onDoubleClick}>
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={title} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+          ) : (
+            <div style={{ color:'#666', fontSize:48 }}>{isAudio ? '🎵' : '📄'}</div>
+          )}
+        </div>
+      )
+    }
     return (
       <div style={{ position:'relative', width:'100%', height:'100%' }} onDoubleClick={onDoubleClick}>
         <VodPlayer
           ref={playerRef as any}
-          src={item.hls_url}
+          src={mediaSrc}
           autoplay={autoplay}
           muted={!!muted}
           loop={false}
@@ -58,33 +79,44 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
   }
 
   // mini mode – styled like current VodTile in masonry layout
+  // For non-video items, show thumbnail/image instead of player
+  const renderMedia = () => {
+    if(!isVideo || !mediaSrc){
+      // Non-video: show thumbnail
+      return (
+        <div style={{ width:'100%', height: playerHeight || 200, display:'flex', alignItems:'center', justifyContent:'center', background:'#1a1a1a', borderRadius:8, overflow:'hidden' }}>
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }} loading="lazy" />
+          ) : (
+            <div style={{ color:'#666', fontSize:32 }}>{isAudio ? '🎵' : isImage ? '🖼️' : '📄'}</div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <VodPlayer
+        src={mediaSrc}
+        autoplay={autoplay}
+        muted
+        loop
+        scaleMode={cover ? 'fill' : 'fit'}
+        disableDoubleClickFullscreen={!!onDoubleClick}
+        onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
+      />
+    )
+  }
+
   const content = (
     <>
       {width ? (
         <div ref={miniContainerRef || undefined} style={{ width:'100%', height: playerHeight, ...(miniStyle || {}) }} onDoubleClick={onDoubleClick}>
-          <VodPlayer
-            src={item.hls_url}
-            autoplay={autoplay}
-            muted
-            loop
-            scaleMode={cover ? 'fill' : 'fit'}
-            disableDoubleClickFullscreen={!!onDoubleClick}
-            onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
-          />
+          {renderMedia()}
         </div>
       ) : (
         <div style={{ position:'relative', width:'100%' }} onDoubleClick={onDoubleClick}>
           <div style={{ width:'100%', paddingTop: `${(1/ratio)*100}%` }} />
           <div ref={miniContainerRef || undefined} style={{ position:'absolute', inset:0, ...(miniStyle || {}) }}>
-            <VodPlayer
-              src={item.hls_url}
-              autoplay={autoplay}
-              muted
-              loop
-              scaleMode={cover ? 'fill' : 'fit'}
-              disableDoubleClickFullscreen={!!onDoubleClick}
-              onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
-            />
+            {renderMedia()}
           </div>
         </div>
       )}

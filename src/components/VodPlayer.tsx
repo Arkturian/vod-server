@@ -66,7 +66,7 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
 
   useEffect(()=>{
     const v = videoRef.current
-    if(!v) return
+    if(!v || !src) return
     let hls: Hls | null = null
 
     const isHls = src.endsWith('.m3u8')
