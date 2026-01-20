@@ -49,13 +49,13 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
 
   if(mode === 'theater'){
     if(!isVideo || !mediaSrc){
-      // Non-video: show thumbnail/image
+      // Non-video: show thumbnail/image (transparent background)
       return (
-        <div style={{ position:'relative', width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', background:'#111' }} onDoubleClick={onDoubleClick}>
+        <div style={{ position:'relative', width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }} onDoubleClick={onDoubleClick}>
           {thumbnailSrc ? (
             <img src={thumbnailSrc} alt={title} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
           ) : (
-            <div style={{ color:'#666', fontSize:48 }}>{isAudio ? '🎵' : '📄'}</div>
+            <div style={{ color:'var(--muted)', fontSize:48 }}>{isAudio ? '🎵' : '📄'}</div>
           )}
         </div>
       )
@@ -82,13 +82,13 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
   // For non-video items, show thumbnail/image instead of player
   const renderMedia = () => {
     if(!isVideo || !mediaSrc){
-      // Non-video: show thumbnail
+      // Non-video: show thumbnail (transparent background)
       return (
-        <div style={{ width:'100%', height: playerHeight || 200, display:'flex', alignItems:'center', justifyContent:'center', background:'#1a1a1a', borderRadius:8, overflow:'hidden' }}>
+        <div style={{ width:'100%', height: playerHeight || 200, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, overflow:'hidden' }}>
           {thumbnailSrc ? (
-            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover' }} loading="lazy" />
+            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8 }} loading="lazy" />
           ) : (
-            <div style={{ color:'#666', fontSize:32 }}>{isAudio ? '🎵' : isImage ? '🖼️' : '📄'}</div>
+            <div style={{ color:'var(--muted)', fontSize:32 }}>{isAudio ? '🎵' : isImage ? '🖼️' : '📄'}</div>
           )}
         </div>
       )
