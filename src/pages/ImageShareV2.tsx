@@ -455,26 +455,32 @@ export default function ImageShareV2(){
 
                   {navigableMedia.length > 1 && (
                     <div style={{ position:'absolute', bottom:28, left:'50%', transform:'translateX(-50%)', pointerEvents:'auto' }}>
-                      <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
-                        {navigableMedia.map(m => (
-                          <button
-                            key={`dot-${m.id}`}
-                            aria-label="Go to"
-                            onClick={()=> setActiveId(m.id)}
-                            style={{
-                              width:12,
-                              height:12,
-                              borderRadius:'50%',
-                              border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
-                              background: m.id===activeId ? 'var(--brand)' : 'transparent',
-                              display:'block',
-                              padding:0,
-                              cursor:'pointer',
-                              boxSizing:'border-box'
-                            }}
-                          />
-                        ))}
-                      </div>
+                      {navigableMedia.length <= 10 ? (
+                        <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
+                          {navigableMedia.map(m => (
+                            <button
+                              key={`dot-${m.id}`}
+                              aria-label="Go to"
+                              onClick={()=> setActiveId(m.id)}
+                              style={{
+                                width:12,
+                                height:12,
+                                borderRadius:'50%',
+                                border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
+                                background: m.id===activeId ? 'var(--brand)' : 'transparent',
+                                display:'block',
+                                padding:0,
+                                cursor:'pointer',
+                                boxSizing:'border-box'
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ padding:'8px 16px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)', color:'#fff', fontSize:14, fontWeight:500 }}>
+                          {navigableMedia.findIndex(m => m.id === activeId) + 1} / {navigableMedia.length}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -564,29 +570,35 @@ export default function ImageShareV2(){
               </>
             )}
 
-            {/* Dots (show only if more than one) */}
+            {/* Dots or counter (show only if more than one) */}
             {navigableMedia.length > 1 && (
               <div style={{ position:'absolute', bottom:28, left:'50%', transform:'translateX(-50%)', pointerEvents:'auto' }}>
-                <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
-                  {navigableMedia.map(m => (
-                    <button
-                      key={`dot-${m.id}`}
-                      aria-label="Go to"
-                      onClick={()=> setActiveId(m.id)}
-                      style={{
-                        width:12,
-                        height:12,
-                        borderRadius:'50%',
-                        border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
-                        background: m.id===activeId ? 'var(--brand)' : 'transparent',
-                        display:'block',
-                        padding:0,
-                        cursor:'pointer',
-                        boxSizing:'border-box'
-                      }}
-                    />
-                  ))}
-                </div>
+                {navigableMedia.length <= 10 ? (
+                  <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
+                    {navigableMedia.map(m => (
+                      <button
+                        key={`dot-${m.id}`}
+                        aria-label="Go to"
+                        onClick={()=> setActiveId(m.id)}
+                        style={{
+                          width:12,
+                          height:12,
+                          borderRadius:'50%',
+                          border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
+                          background: m.id===activeId ? 'var(--brand)' : 'transparent',
+                          display:'block',
+                          padding:0,
+                          cursor:'pointer',
+                          boxSizing:'border-box'
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding:'8px 16px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)', color:'#fff', fontSize:14, fontWeight:500 }}>
+                    {navigableMedia.findIndex(m => m.id === activeId) + 1} / {navigableMedia.length}
+                  </div>
+                )}
               </div>
             )}
 
