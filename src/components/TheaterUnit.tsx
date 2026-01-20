@@ -136,6 +136,9 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
       {showMeta && (
         <div style={{ marginTop:8 }}>
           <div className="flat-card-title" style={{ fontSize:14 }}>{title}</div>
+          <a href={`/share/v3?current_id=${item.id}`} style={{ fontSize:11, color:'var(--muted)', textDecoration:'none' }} onClick={(e)=> e.stopPropagation()}>
+            #{item.id}
+          </a>
           {item.description && <div className="flat-card-sub" style={{ fontSize:12 }}>{item.description}</div>}
         </div>
       )}
