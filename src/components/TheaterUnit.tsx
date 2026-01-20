@@ -10,6 +10,8 @@ export type VodItem = {
   original_filename?: string
   thumbnail_url?: string
   mime_type?: string
+  width?: number
+  height?: number
 }
 
 type Props = {
@@ -34,7 +36,8 @@ type Props = {
 }
 
 export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta = true, autoplay = true, cover = false, onDoubleClick, onMeta, playerRef, muted, scaleMode, fullscreenScaleMode, onTimeUpdate, onPlayChange, miniContainerRef, miniStyle }: Props){
-  const [wh, setWh] = useState<{ w:number; h:number }>({ w:16, h:9 })
+  // Use API width/height if available, otherwise default to 16:9
+  const [wh, setWh] = useState<{ w:number; h:number }>({ w: item.width || 16, h: item.height || 9 })
   const ratio = wh.h ? wh.w / wh.h : 16/9
   const autoHeight = width ? Math.ceil(width / ratio) : undefined
   const playerHeight = fixedHeight ?? autoHeight
