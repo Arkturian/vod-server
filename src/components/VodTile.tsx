@@ -3,11 +3,13 @@ import VodPlayer from './VodPlayer'
 
 export type VodItem = {
   id: number
-  hls_url: string
+  hls_url?: string | null
+  file_url?: string | null
   title?: string
   description?: string
   original_filename?: string
   thumbnail_url?: string
+  mime_type?: string
 }
 
 type VodTileProps = {
@@ -31,34 +33,50 @@ export default function VodTile({ item, width, fixedHeight, showMeta = true, aut
 
   const title = item.title || item.original_filename || '—'
 
+  // Check if item is a video
+  const isVideo = !!item.hls_url || item.mime_type?.startsWith('video/')
+  const mediaSrc = item.hls_url || item.file_url
+  const thumbnailSrc = item.thumbnail_url || item.file_url
+
+  // Render media (video or image)
+  const renderMedia = (height?: number) => {
+    if(!isVideo || !mediaSrc){
+      // Non-video: show thumbnail
+      return (
+        <div style={{ width:'100%', height: height || '100%', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, overflow:'hidden' }}>
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover', borderRadius:8 }} loading="lazy" />
+          ) : (
+            <div style={{ color:'var(--muted)', fontSize:32 }}>📄</div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <VodPlayer
+        src={mediaSrc}
+        autoplay={autoplay}
+        muted
+        loop
+        scaleMode={cover ? 'fill' : 'fit'}
+        disableDoubleClickFullscreen={!!onDoubleClick}
+        onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
+      />
+    )
+  }
+
   // Strip mode (width provided) uses explicit height; otherwise masonry-style ratio box
   const content = (
     <>
       {width ? (
         <div style={{ width:'100%', height: playerHeight }} onClick={onClick} onDoubleClick={onDoubleClick}>
-          <VodPlayer
-            src={item.hls_url}
-            autoplay={autoplay}
-            muted
-            loop
-            scaleMode={cover ? 'fill' : 'fit'}
-            disableDoubleClickFullscreen={!!onDoubleClick}
-            onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
-          />
+          {renderMedia(playerHeight)}
         </div>
       ) : (
         <div style={{ position:'relative', width:'100%' }} onClick={onClick} onDoubleClick={onDoubleClick}>
           <div style={{ width:'100%', paddingTop: `${(1/ratio)*100}%` }} />
           <div style={{ position:'absolute', inset:0 }}>
-            <VodPlayer
-              src={item.hls_url}
-              autoplay={autoplay}
-              muted
-              loop
-              scaleMode={cover ? 'fill' : 'fit'}
-              disableDoubleClickFullscreen={!!onDoubleClick}
-              onMetadata={({ width, height })=> { setWh({ w: width, h: height }); onMeta?.(item.id, { w: width, h: height }) }}
-            />
+            {renderMedia()}
           </div>
         </div>
       )}
