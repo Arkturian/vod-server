@@ -36,7 +36,7 @@ export default function VodPage(){
     (async ()=>{
       try{
         if(collectionId){
-          const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&collection_id=${collectionId}`, { headers:{ 'X-API-KEY': API_KEY } })
+          const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&mine=false&collection_id=${collectionId}`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('collection load failed')
           const data = await res.json()
           const items = (data.items as VodItem[]).filter(i => i.hls_url)
