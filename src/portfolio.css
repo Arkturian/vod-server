@@ -86,6 +86,34 @@ a,button{cursor:pointer}
 .masonry-item{break-inside:avoid; margin:0 0 12px; display:inline-block; width:100%}
 @media (max-width:900px){.masonry{column-width:240px; column-gap:10px}}
 
+/* Responsive masonry - columns based on screen width */
+.masonry-responsive{column-gap:12px; column-count:2}
+.masonry-responsive .masonry-item{break-inside:avoid; margin:0 0 12px; display:inline-block; width:100%}
+@media (min-width:600px){.masonry-responsive{column-count:3}}
+@media (min-width:900px){.masonry-responsive{column-count:4}}
+@media (min-width:1200px){.masonry-responsive{column-count:5}}
+@media (min-width:1600px){.masonry-responsive{column-count:6}}
+@media (min-width:2000px){.masonry-responsive{column-count:7}}
+@media (min-width:2400px){.masonry-responsive{column-count:8}}
+
+/* VodAll toolbar */
+.vodall-header{display:flex; align-items:baseline; gap:12px; margin-bottom:16px; padding:0 18px}
+.vodall-count{font-size:14px; color:var(--muted)}
+.vodall-toolbar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; padding:0 18px; flex-wrap:wrap}
+.vodall-filters{display:flex; gap:6px}
+.vodall-filter-btn{padding:6px 14px; border-radius:999px; border:1px solid var(--ring); background:transparent; color:var(--text); font-size:13px; cursor:pointer; transition:.15s background-color,.15s border-color}
+.vodall-filter-btn:hover{background:rgba(0,0,0,.04)}
+.vodall-filter-btn.active{background:var(--brand); color:#fff; border-color:transparent}
+.vodall-controls{display:flex; gap:8px; align-items:center}
+.vodall-search{padding:6px 12px; border-radius:10px; border:1px solid var(--ring); background:var(--white); color:var(--text); font-size:13px; width:180px; outline:none; transition:.15s border-color}
+.vodall-search:focus{border-color:var(--brand-2)}
+.vodall-sort{padding:6px 12px; border-radius:10px; border:1px solid var(--ring); background:var(--white); color:var(--text); font-size:13px; outline:none; cursor:pointer}
+@media (max-width:600px){
+  .vodall-toolbar{flex-direction:column; align-items:stretch}
+  .vodall-controls{width:100%}
+  .vodall-search{flex:1}
+}
+
 /* Horizontal strip: baseline-aligned tiles */
 .hstrip{display:flex; gap:12px; align-items:flex-end; overflow-x:auto; padding-bottom:6px; scrollbar-width:none}
 .hstrip::-webkit-scrollbar{display:none}
