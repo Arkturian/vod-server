@@ -86,15 +86,9 @@ a,button{cursor:pointer}
 .masonry-item{break-inside:avoid; margin:0 0 12px; display:inline-block; width:100%}
 @media (max-width:900px){.masonry{column-width:240px; column-gap:10px}}
 
-/* Responsive masonry - columns based on screen width */
-.masonry-responsive{column-gap:12px; column-count:2}
-.masonry-responsive .masonry-item{break-inside:avoid; margin:0 0 12px; display:inline-block; width:100%}
-@media (min-width:600px){.masonry-responsive{column-count:3}}
-@media (min-width:900px){.masonry-responsive{column-count:4}}
-@media (min-width:1200px){.masonry-responsive{column-count:5}}
-@media (min-width:1600px){.masonry-responsive{column-count:6}}
-@media (min-width:2000px){.masonry-responsive{column-count:7}}
-@media (min-width:2400px){.masonry-responsive{column-count:8}}
+/* JS-driven masonry columns (row-first order: newest items span across top) */
+.masonry-cols{display:flex; gap:12px; align-items:flex-start}
+.masonry-col{flex:1; min-width:0; display:flex; flex-direction:column; gap:12px}
 
 /* VodAll toolbar */
 .vodall-header{display:flex; align-items:baseline; gap:12px; margin-bottom:16px; padding:0 18px}

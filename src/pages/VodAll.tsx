@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TheaterUnit, { type VodItem as VodItemType } from '../components/TheaterUnit'
 
@@ -10,6 +10,26 @@ const API_KEY = 'Inetpass1'
 type MediaFilter = 'all' | 'image' | 'video'
 type SortOption = 'newest' | 'oldest'
 
+function useColumnCount(){
+  const [cols, setCols] = useState(() => calcCols())
+  function calcCols(){
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1200
+    if(w >= 2400) return 8
+    if(w >= 2000) return 7
+    if(w >= 1600) return 6
+    if(w >= 1200) return 5
+    if(w >= 900) return 4
+    if(w >= 600) return 3
+    return 2
+  }
+  useLayoutEffect(()=>{
+    const onResize = ()=> setCols(calcCols())
+    window.addEventListener('resize', onResize)
+    return ()=> window.removeEventListener('resize', onResize)
+  }, [])
+  return cols
+}
+
 export default function VodAll(){
   const [items, setItems] = useState<VodItem[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -18,6 +38,7 @@ export default function VodAll(){
   const [sort, setSort] = useState<SortOption>('newest')
   const [search, setSearch] = useState('')
   const navigate = useNavigate()
+  const colCount = useColumnCount()
 
   useEffect(()=>{
     (async ()=>{
@@ -115,10 +136,15 @@ export default function VodAll(){
         {loading && <p className="muted">Loading…</p>}
         {error && <p className="muted" style={{ color:'crimson' }}>{error}</p>}
         {!loading && !error && (
-          <div className="masonry-responsive">
-            {filtered.map(item => (
-              <div key={item.id} className="masonry-item">
-                <TheaterUnit item={item} mode="mini" onDoubleClick={()=> navigate(`/vod/theater?current_id=${item.id}&from=/vod/all`)} />
+          <div className="masonry-cols" style={{ columnCount: colCount }}>
+            {/* Round-robin: item 0→col0, item 1→col1, ... so newest span across the top */}
+            {Array.from({ length: colCount }, (_, colIdx) => (
+              <div key={colIdx} className="masonry-col">
+                {filtered.filter((_, i) => i % colCount === colIdx).map(item => (
+                  <div key={item.id} className="masonry-item">
+                    <TheaterUnit item={item} mode="mini" onDoubleClick={()=> navigate(`/vod/theater?current_id=${item.id}&from=/vod/all`)} />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
