@@ -12,6 +12,10 @@ export type VodItem = {
   mime_type?: string
   width?: number
   height?: number
+  link_id?: string | null
+  collection_id?: string | null
+  created_at?: string
+  context?: string | null
 }
 
 type Props = {
@@ -136,10 +140,23 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
       {showMeta && (
         <div style={{ marginTop:8 }}>
           <div className="flat-card-title" style={{ fontSize:14 }}>{title}</div>
-          <a href={`/share/v3?current_id=${item.id}`} style={{ fontSize:11, color:'var(--muted)', textDecoration:'none' }} onClick={(e)=> e.stopPropagation()}>
-            #{item.id}
-          </a>
-          {item.description && <div className="flat-card-sub" style={{ fontSize:12 }}>{item.description}</div>}
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 8px', alignItems:'center', marginTop:2 }}>
+            <a href={`/share/v3?current_id=${item.id}`} style={{ fontSize:11, color:'var(--muted)', textDecoration:'none' }} onClick={(e)=> e.stopPropagation()}>
+              #{item.id}
+            </a>
+            {item.collection_id && (
+              <span style={{ fontSize:11, color:'var(--brand-2)', background:'var(--ring)', padding:'1px 6px', borderRadius:6 }}>{item.collection_id}</span>
+            )}
+            {item.link_id && (
+              <span style={{ fontSize:11, color:'var(--muted)' }}>link: {item.link_id}</span>
+            )}
+          </div>
+          {item.created_at && (
+            <div style={{ fontSize:11, color:'var(--muted)', marginTop:2 }}>
+              {new Date(item.created_at).toLocaleDateString('de-AT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+            </div>
+          )}
+          {item.description && <div className="flat-card-sub" style={{ fontSize:12, marginTop:2 }}>{item.description}</div>}
         </div>
       )}
     </>
