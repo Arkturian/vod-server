@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import TheaterUnit, { type VodItem as VodItemType } from '../components/TheaterUnit'
 
 type VodItem = VodItemType & { created_at?: string; file_size_bytes?: number }
+type Collection = { id: string; name: string; item_count: number }
 
 const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
@@ -37,6 +38,12 @@ export default function VodAll(){
   const [filter, setFilter] = useState<MediaFilter>('all')
   const [sort, setSort] = useState<SortOption>('newest')
   const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  const [ctxSearch, setCtxSearch] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const ctxRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const colCount = useColumnCount()
 
@@ -62,14 +69,114 @@ export default function VodAll(){
     })()
   }, [])
 
+  // Fetch collections
+  useEffect(()=>{
+    (async ()=>{
+      try{
+        const res = await fetch(`${API_BASE_URL}/admin/collections?user_email=apopovic.aut@gmail.com`, { headers:{ 'X-API-KEY': API_KEY } })
+        if(res.ok){
+          const data: Collection[] = await res.json()
+          setCollections(data.sort((a,b) => a.name.localeCompare(b.name)))
+        }
+      } catch(e){ console.error('Failed to load collections', e) }
+    })()
+  }, [])
+
+  // Close context menu on click outside
+  useEffect(()=>{
+    if(!ctxMenu) return
+    const handler = (e: MouseEvent)=>{
+      if(ctxRef.current && !ctxRef.current.contains(e.target as Node)){
+        setCtxMenu(null)
+        setCtxSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return ()=> document.removeEventListener('mousedown', handler)
+  }, [ctxMenu])
+
+  // Close context menu on Escape
+  useEffect(()=>{
+    if(!ctxMenu) return
+    const handler = (e: KeyboardEvent)=>{
+      if(e.key === 'Escape'){ setCtxMenu(null); setCtxSearch('') }
+    }
+    document.addEventListener('keydown', handler)
+    return ()=> document.removeEventListener('keydown', handler)
+  }, [ctxMenu])
+
+  const toggleSelect = useCallback((id: number, e: React.MouseEvent)=>{
+    e.stopPropagation()
+    setSelected(prev => {
+      const next = new Set(prev)
+      if(next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent)=>{
+    if(selected.size === 0) return
+    e.preventDefault()
+    setCtxMenu({ x: e.clientX, y: e.clientY })
+    setCtxSearch('')
+  }, [selected])
+
+  const assignToCollection = useCallback(async (collectionId: string)=>{
+    if(selected.size === 0) return
+    setAssigning(true)
+    const ids = Array.from(selected)
+    try{
+      await Promise.all(ids.map(id =>
+        fetch(`${API_BASE_URL}/storage/objects/${id}`, {
+          method: 'PATCH',
+          headers: { 'X-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection_id: collectionId })
+        })
+      ))
+      // Update local state
+      setItems(prev => prev.map(item =>
+        selected.has(item.id) ? { ...item, collection_id: collectionId } : item
+      ))
+      setSelected(new Set())
+    } catch(e){
+      console.error('Failed to assign collection', e)
+    } finally {
+      setAssigning(false)
+      setCtxMenu(null)
+      setCtxSearch('')
+    }
+  }, [selected])
+
+  const removeFromCollection = useCallback(async ()=>{
+    if(selected.size === 0) return
+    setAssigning(true)
+    const ids = Array.from(selected)
+    try{
+      await Promise.all(ids.map(id =>
+        fetch(`${API_BASE_URL}/storage/objects/${id}`, {
+          method: 'PATCH',
+          headers: { 'X-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection_id: null })
+        })
+      ))
+      setItems(prev => prev.map(item =>
+        selected.has(item.id) ? { ...item, collection_id: null } : item
+      ))
+      setSelected(new Set())
+    } catch(e){
+      console.error('Failed to remove collection', e)
+    } finally {
+      setAssigning(false)
+      setCtxMenu(null)
+      setCtxSearch('')
+    }
+  }, [selected])
+
   const filtered = useMemo(() => {
     let result = items
-
-    // Type filter
     if(filter === 'image') result = result.filter(i => i.mime_type?.startsWith('image/'))
     if(filter === 'video') result = result.filter(i => i.mime_type?.startsWith('video/'))
-
-    // Search
     if(search.trim()){
       const q = search.toLowerCase()
       result = result.filter(i =>
@@ -79,28 +186,35 @@ export default function VodAll(){
         String(i.id).includes(q)
       )
     }
-
-    // Sort
     result = [...result].sort((a, b) => {
       const da = a.created_at || ''
       const db = b.created_at || ''
       if(sort === 'newest') return da > db ? -1 : da < db ? 1 : b.id - a.id
       return da < db ? -1 : da > db ? 1 : a.id - b.id
     })
-
     return result
   }, [items, filter, sort, search])
 
   const imageCount = items.filter(i => i.mime_type?.startsWith('image/')).length
   const videoCount = items.filter(i => i.mime_type?.startsWith('video/')).length
 
+  const filteredCollections = ctxSearch
+    ? collections.filter(c => c.name.toLowerCase().includes(ctxSearch.toLowerCase()))
+    : collections
+
   return (
-    <main role="main">
+    <main role="main" onContextMenu={handleContextMenu}>
       <section className="section section-full" aria-labelledby="vodall-title">
         <div className="vodall-header">
           <h2 id="vodall-title" className="h2" style={{ margin: 0 }}>All Media</h2>
           {!loading && !error && (
             <span className="vodall-count">{filtered.length} items</span>
+          )}
+          {selected.size > 0 && (
+            <span className="vodall-selection-info">
+              {selected.size} selected
+              <button className="vodall-clear-btn" onClick={() => setSelected(new Set())}>Clear</button>
+            </span>
           )}
         </div>
 
@@ -137,11 +251,14 @@ export default function VodAll(){
         {error && <p className="muted" style={{ color:'crimson' }}>{error}</p>}
         {!loading && !error && (
           <div className="masonry-cols" style={{ columnCount: colCount }}>
-            {/* Round-robin: item 0→col0, item 1→col1, ... so newest span across the top */}
             {Array.from({ length: colCount }, (_, colIdx) => (
               <div key={colIdx} className="masonry-col">
                 {filtered.filter((_, i) => i % colCount === colIdx).map(item => (
-                  <div key={item.id} className="masonry-item">
+                  <div
+                    key={item.id}
+                    className={`masonry-item${selected.has(item.id) ? ' selected' : ''}`}
+                    onClick={(e) => toggleSelect(item.id, e)}
+                  >
                     <TheaterUnit item={item} mode="mini" onDoubleClick={()=> navigate(`/vod/theater?current_id=${item.id}&from=/vod/all`)} />
                   </div>
                 ))}
@@ -150,6 +267,50 @@ export default function VodAll(){
           </div>
         )}
       </section>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          ref={ctxRef}
+          className="vodall-ctx"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        >
+          <div className="vodall-ctx-header">
+            Assign {selected.size} item{selected.size > 1 ? 's' : ''} to collection
+          </div>
+          <input
+            className="vodall-ctx-search"
+            type="text"
+            placeholder="Filter collections..."
+            value={ctxSearch}
+            onChange={e => setCtxSearch(e.target.value)}
+            autoFocus
+          />
+          <div className="vodall-ctx-list">
+            {filteredCollections.map(c => (
+              <button
+                key={c.id}
+                className="vodall-ctx-item"
+                onClick={() => assignToCollection(c.id)}
+                disabled={assigning}
+              >
+                <span className="vodall-ctx-name">{c.name}</span>
+                <span className="vodall-ctx-count">{c.item_count}</span>
+              </button>
+            ))}
+            {filteredCollections.length === 0 && (
+              <div className="vodall-ctx-empty">No collections found</div>
+            )}
+          </div>
+          <button
+            className="vodall-ctx-item vodall-ctx-remove"
+            onClick={removeFromCollection}
+            disabled={assigning}
+          >
+            Remove from collection
+          </button>
+        </div>
+      )}
     </main>
   )
 }

@@ -108,6 +108,27 @@ a,button{cursor:pointer}
   .vodall-search{flex:1}
 }
 
+/* Selection */
+.masonry-item{cursor:pointer; border-radius:var(--radius-md); transition:outline .1s ease, opacity .1s ease}
+.masonry-item.selected{outline:3px solid var(--brand-2); outline-offset:2px; border-radius:var(--radius-md)}
+.vodall-selection-info{font-size:13px; color:var(--brand-2); font-weight:600; display:flex; align-items:center; gap:8px}
+.vodall-clear-btn{background:none; border:1px solid var(--ring); border-radius:6px; padding:2px 8px; font-size:12px; color:var(--muted); cursor:pointer}
+.vodall-clear-btn:hover{background:rgba(0,0,0,.04)}
+
+/* Context menu */
+.vodall-ctx{position:fixed; z-index:1000; min-width:240px; max-width:320px; background:var(--white); border:1px solid var(--ring); border-radius:var(--radius-md); box-shadow:0 12px 40px rgba(0,0,0,.18); overflow:hidden}
+.vodall-ctx-header{padding:10px 14px; font-size:12px; font-weight:600; color:var(--muted); border-bottom:1px solid var(--ring)}
+.vodall-ctx-search{width:100%; padding:8px 14px; border:none; border-bottom:1px solid var(--ring); font-size:13px; background:transparent; color:var(--text); outline:none}
+.vodall-ctx-list{max-height:280px; overflow-y:auto; scrollbar-width:thin}
+.vodall-ctx-item{display:flex; justify-content:space-between; align-items:center; width:100%; padding:8px 14px; border:none; background:transparent; color:var(--text); font-size:13px; cursor:pointer; text-align:left}
+.vodall-ctx-item:hover{background:rgba(0,0,0,.04)}
+.vodall-ctx-item:disabled{opacity:.5; cursor:wait}
+.vodall-ctx-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.vodall-ctx-count{font-size:11px; color:var(--muted); flex-shrink:0; margin-left:8px}
+.vodall-ctx-remove{border-top:1px solid var(--ring); color:crimson; font-size:12px}
+.vodall-ctx-remove:hover{background:rgba(220,20,60,.06)}
+.vodall-ctx-empty{padding:12px 14px; font-size:12px; color:var(--muted); text-align:center}
+
 /* Horizontal strip: baseline-aligned tiles */
 .hstrip{display:flex; gap:12px; align-items:flex-end; overflow-x:auto; padding-bottom:6px; scrollbar-width:none}
 .hstrip::-webkit-scrollbar{display:none}
