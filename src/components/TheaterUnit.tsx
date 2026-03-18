@@ -10,6 +10,8 @@ export type VodItem = {
   original_filename?: string
   thumbnail_url?: string
   mime_type?: string
+  width?: number
+  height?: number
 }
 
 type Props = {
@@ -34,7 +36,8 @@ type Props = {
 }
 
 export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta = true, autoplay = true, cover = false, onDoubleClick, onMeta, playerRef, muted, scaleMode, fullscreenScaleMode, onTimeUpdate, onPlayChange, miniContainerRef, miniStyle }: Props){
-  const [wh, setWh] = useState<{ w:number; h:number }>({ w:16, h:9 })
+  // Use API width/height if available, otherwise default to 16:9
+  const [wh, setWh] = useState<{ w:number; h:number }>({ w: item.width || 16, h: item.height || 9 })
   const ratio = wh.h ? wh.w / wh.h : 16/9
   const autoHeight = width ? Math.ceil(width / ratio) : undefined
   const playerHeight = fixedHeight ?? autoHeight
@@ -112,7 +115,17 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
         <div ref={miniContainerRef || undefined} style={{ width:'100%', height: playerHeight, ...(miniStyle || {}) }} onDoubleClick={onDoubleClick}>
           {renderMedia()}
         </div>
+      ) : isImage ? (
+        // For images in masonry: let image flow naturally without aspect-ratio container
+        <div ref={miniContainerRef || undefined} style={{ ...(miniStyle || {}) }} onDoubleClick={onDoubleClick}>
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={title} style={{ width:'100%', height:'auto', borderRadius:8, display:'block' }} loading="lazy" />
+          ) : (
+            <div style={{ width:'100%', height:200, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--muted)', fontSize:32 }}>🖼️</div>
+          )}
+        </div>
       ) : (
+        // For videos: use aspect-ratio container
         <div style={{ position:'relative', width:'100%' }} onDoubleClick={onDoubleClick}>
           <div style={{ width:'100%', paddingTop: `${(1/ratio)*100}%` }} />
           <div ref={miniContainerRef || undefined} style={{ position:'absolute', inset:0, ...(miniStyle || {}) }}>
@@ -123,6 +136,9 @@ export default function TheaterUnit({ item, mode, width, fixedHeight, showMeta =
       {showMeta && (
         <div style={{ marginTop:8 }}>
           <div className="flat-card-title" style={{ fontSize:14 }}>{title}</div>
+          <a href={`/share/v3?current_id=${item.id}`} style={{ fontSize:11, color:'var(--muted)', textDecoration:'none' }} onClick={(e)=> e.stopPropagation()}>
+            #{item.id}
+          </a>
           {item.description && <div className="flat-card-sub" style={{ fontSize:12 }}>{item.description}</div>}
         </div>
       )}

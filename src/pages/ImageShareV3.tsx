@@ -232,7 +232,7 @@ export default function ImageShareV3(){
                           <VodPlayer src={(m as any).hls_url || m.file_url || ''} autoplay={false} muted={false} scaleMode={fit ? 'fit' : 'fill'} isActive={true} />
                         </div>
                       ) : isImage ? (
-                        <img src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', display:'block' }} />
+                        <img src={m.file_url} alt={m.title || ''} loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', display:'block' }} />
                       ) : isText ? (
                         <div style={{ fontWeight:700, fontSize:'1.15rem', padding:'8px 0' }}>
                           <TextPreview url={m.file_url || ''} />
@@ -286,7 +286,7 @@ export default function ImageShareV3(){
                         {isVideo ? (
                           <VodPlayer src={(m as any).hls_url || m.file_url || ''} autoplay={false} muted={false} scaleMode={fit ? 'fit' : 'fill'} isActive={true} />
                         ) : isImage ? (
-                          <img src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover' }} />
+                          <img src={m.file_url} alt={m.title || ''} loading="lazy" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover' }} />
                         ) : null}
                       </div>
                     )}

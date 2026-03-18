@@ -227,6 +227,17 @@ export default function ImageShareV2(){
     })
   }, [item, linkedItems])
 
+  // Only render active item + adjacent items for performance (prevents HTTP2 overload)
+  const visibleMedia = useMemo(()=>{
+    if(!navigableMedia.length) return []
+    const idx = navigableMedia.findIndex(m => m.id === activeId)
+    if(idx === -1) return navigableMedia.slice(0, 1)
+    const prev = (idx - 1 + navigableMedia.length) % navigableMedia.length
+    const next = (idx + 1) % navigableMedia.length
+    const indices = new Set([prev, idx, next])
+    return navigableMedia.filter((_, i) => indices.has(i))
+  }, [navigableMedia, activeId])
+
   useEffect(()=>{
     if(!activeId && navigableMedia.length){ setActiveId(navigableMedia[0].id) }
     else if(activeId && !navigableMedia.some(m=> m.id===activeId) && navigableMedia.length){ setActiveId(navigableMedia[0].id) }
@@ -392,7 +403,7 @@ export default function ImageShareV2(){
             {effectiveLayout === 'left' ? SidePanel : null}
             <div style={{ position:'relative', flex:1 }}>
               <div style={{ position:'relative', width:'100%', height:'100%' }}>
-                {navigableMedia.map(m => {
+                {visibleMedia.map(m => {
                   const isVideo = !!(m.mime_type && m.mime_type.startsWith('video/')) || !!(m as any).hls_url
                   const isImage = !!(m.mime_type && m.mime_type.startsWith('image/'))
                   if(isVideo){
@@ -404,7 +415,7 @@ export default function ImageShareV2(){
                   }
                   if(isImage){
                     return (
-                      <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} />
+                      <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} loading="lazy" />
                     )
                   }
                   return (
@@ -444,26 +455,32 @@ export default function ImageShareV2(){
 
                   {navigableMedia.length > 1 && (
                     <div style={{ position:'absolute', bottom:28, left:'50%', transform:'translateX(-50%)', pointerEvents:'auto' }}>
-                      <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
-                        {navigableMedia.map(m => (
-                          <button
-                            key={`dot-${m.id}`}
-                            aria-label="Go to"
-                            onClick={()=> setActiveId(m.id)}
-                            style={{
-                              width:12,
-                              height:12,
-                              borderRadius:'50%',
-                              border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
-                              background: m.id===activeId ? 'var(--brand)' : 'transparent',
-                              display:'block',
-                              padding:0,
-                              cursor:'pointer',
-                              boxSizing:'border-box'
-                            }}
-                          />
-                        ))}
-                      </div>
+                      {navigableMedia.length <= 10 ? (
+                        <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
+                          {navigableMedia.map(m => (
+                            <button
+                              key={`dot-${m.id}`}
+                              aria-label="Go to"
+                              onClick={()=> setActiveId(m.id)}
+                              style={{
+                                width:12,
+                                height:12,
+                                borderRadius:'50%',
+                                border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
+                                background: m.id===activeId ? 'var(--brand)' : 'transparent',
+                                display:'block',
+                                padding:0,
+                                cursor:'pointer',
+                                boxSizing:'border-box'
+                              }}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ padding:'8px 16px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)', color:'#fff', fontSize:14, fontWeight:500 }}>
+                          {navigableMedia.findIndex(m => m.id === activeId) + 1} / {navigableMedia.length}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -480,8 +497,8 @@ export default function ImageShareV2(){
     <main role="main">
       <section className="section section-full" aria-labelledby="imagesharev2-title" style={{ padding:0 }}>
         <div style={{ position:'relative', width:'100%', height:VISUAL_HEIGHT }}>
-          {/* Visuals */}
-          {navigableMedia.map(m => {
+          {/* Visuals - only render active + adjacent items for performance */}
+          {visibleMedia.map(m => {
             const isVideo = !!(m.mime_type && m.mime_type.startsWith('video/')) || !!(m as any).hls_url
             const isImage = !!(m.mime_type && m.mime_type.startsWith('image/'))
             if(isVideo){
@@ -493,7 +510,7 @@ export default function ImageShareV2(){
             }
             if(isImage){
               return (
-                <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} />
+                <img key={`img-${m.id}-${crossfadeKey}`} src={m.file_url} alt={m.title || ''} style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit: fit ? 'contain' : 'cover', opacity: m.id === activeId ? 1 : 0, transition: 'opacity 800ms ease-in-out' }} loading="lazy" />
               )
             }
             const mt = (m.mime_type || '').toLowerCase()
@@ -553,29 +570,35 @@ export default function ImageShareV2(){
               </>
             )}
 
-            {/* Dots (show only if more than one) */}
+            {/* Dots or counter (show only if more than one) */}
             {navigableMedia.length > 1 && (
               <div style={{ position:'absolute', bottom:28, left:'50%', transform:'translateX(-50%)', pointerEvents:'auto' }}>
-                <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
-                  {navigableMedia.map(m => (
-                    <button
-                      key={`dot-${m.id}`}
-                      aria-label="Go to"
-                      onClick={()=> setActiveId(m.id)}
-                      style={{
-                        width:12,
-                        height:12,
-                        borderRadius:'50%',
-                        border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
-                        background: m.id===activeId ? 'var(--brand)' : 'transparent',
-                        display:'block',
-                        padding:0,
-                        cursor:'pointer',
-                        boxSizing:'border-box'
-                      }}
-                    />
-                  ))}
-                </div>
+                {navigableMedia.length <= 10 ? (
+                  <div style={{ display:'flex', gap:10, padding:'6px 10px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)' }}>
+                    {navigableMedia.map(m => (
+                      <button
+                        key={`dot-${m.id}`}
+                        aria-label="Go to"
+                        onClick={()=> setActiveId(m.id)}
+                        style={{
+                          width:12,
+                          height:12,
+                          borderRadius:'50%',
+                          border: m.id===activeId ? '1px solid var(--brand)' : '1px solid var(--ring)',
+                          background: m.id===activeId ? 'var(--brand)' : 'transparent',
+                          display:'block',
+                          padding:0,
+                          cursor:'pointer',
+                          boxSizing:'border-box'
+                        }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ padding:'8px 16px', background:'var(--glass)', border:'1px solid var(--ring)', borderRadius:999, backdropFilter:'blur(10px) saturate(180%)', WebkitBackdropFilter:'blur(10px) saturate(180%)', color:'#fff', fontSize:14, fontWeight:500 }}>
+                    {navigableMedia.findIndex(m => m.id === activeId) + 1} / {navigableMedia.length}
+                  </div>
+                )}
               </div>
             )}
 
