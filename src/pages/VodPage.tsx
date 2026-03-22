@@ -95,6 +95,18 @@ export default function VodPage(){
     setDuration(dur || 0)
   }
 
+  // Auto-play when switching videos via up-next or grid
+  const prevIndexRef = useRef(currentIndex)
+  useEffect(() => {
+    if (currentIndex >= 0 && prevIndexRef.current !== currentIndex) {
+      // Small delay to let HLS re-init after src change
+      const t = setTimeout(() => playerRef.current?.play(), 150)
+      prevIndexRef.current = currentIndex
+      return () => clearTimeout(t)
+    }
+    prevIndexRef.current = currentIndex
+  }, [currentIndex])
+
   const percent = duration ? (progress / duration) * 100 : 0
   const aspect = videoWH.h ? (videoWH.w / videoWH.h) : (16/9)
   const padTop = `${(1 / aspect) * 100}%`
