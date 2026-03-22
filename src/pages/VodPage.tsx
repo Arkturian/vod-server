@@ -53,6 +53,16 @@ export default function VodPage(){
         } else if(singleSrc){
           setPlaylist([{ id: -1, hls_url: singleSrc, title: 'Single Video' }])
           setCurrentIndex(0)
+        } else {
+          // No params — load all videos as default playlist
+          const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
+          if(!res.ok) throw new Error('list failed')
+          const data = await res.json()
+          const items = (data.items as VodItem[]).filter((i: any) => i.hls_url)
+          if(items.length){
+            setPlaylist(items)
+            setCurrentIndex(0)
+          }
         }
       } catch(e){ console.error(e) }
     })()
