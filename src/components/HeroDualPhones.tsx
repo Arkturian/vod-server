@@ -40,7 +40,7 @@ export default function HeroDualPhones(){
               <div className="screen-inner">
                 <div className="content-overlay" style={{background:'transparent', padding:0}}>
                   <CustomHLSPlayer
-                    hlsUrl="https://vod.arkturian.com/media/u2_20250829_171448_6fa93837/master.m3u8"
+                    hlsUrl="https://vod.arkturian.com/media/arkturian/u2_20260112_003158_41344eda_transcoded/master.m3u8"
                     muted={true}
                     autoplay={true}
                     loop={true}
