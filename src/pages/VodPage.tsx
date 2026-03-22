@@ -109,7 +109,9 @@ export default function VodPage(){
 
   const percent = duration ? (progress / duration) * 100 : 0
   const aspect = videoWH.h ? (videoWH.w / videoWH.h) : (16/9)
-  const padTop = `${(1 / aspect) * 100}%`
+  const isPortrait = aspect < 1
+  const maxH = '75vh'
+  const padTop = isPortrait ? undefined : `${(1 / aspect) * 100}%`
 
   const upNext = playlist.slice(currentIndex+1, currentIndex+6)
 
@@ -119,8 +121,8 @@ export default function VodPage(){
       {/* Player + Sidebar */}
       <div className="vod-player-layout">
         <div className="vod-player-main">
-          <div style={{ position:'relative', width:'100%', background:'#000', borderRadius:'var(--radius-md)', overflow:'hidden' }}>
-            <div style={{ width:'100%', paddingTop: padTop }} />
+          <div style={{ position:'relative', width:'100%', background:'#000', borderRadius:'var(--radius-md)', overflow:'hidden', ...(isPortrait ? { height: maxH } : {}) }}>
+            {!isPortrait && <div style={{ width:'100%', paddingTop: padTop }} />}
             <div style={{ position:'absolute', inset:0 }}>
               {current && (
                 <VodPlayer
