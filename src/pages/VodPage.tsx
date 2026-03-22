@@ -5,6 +5,7 @@ import type { VodPlayerHandle } from '../components/VodPlayer'
 type VodItem = {
   id: number
   hls_url: string
+  thumbnail_url?: string
   title?: string
   description?: string
   original_filename?: string
@@ -14,6 +15,15 @@ type VodItem = {
 const API_BASE_URL = 'https://api-storage.arkturian.com'
 const API_KEY = 'Inetpass1'
 
+function thumb(item: VodItem){
+  if(item.thumbnail_url) return item.thumbnail_url
+  return `${API_BASE_URL}/storage/media/${item.id}?variant=thumbnail&format=jpg`
+}
+
+function label(item: VodItem){
+  return item.title || item.original_filename?.replace(/\.[^.]+$/, '') || `#${item.id}`
+}
+
 export default function VodPage(){
   const url = new URL(window.location.href)
   const collectionId = url.searchParams.get('collection_id')
@@ -22,7 +32,6 @@ export default function VodPage(){
 
   const [playlist, setPlaylist] = useState<VodItem[]>([])
   const [currentIndex, setCurrentIndex] = useState<number>(-1)
-  const [showUi, setShowUi] = useState<boolean>(true)
   const [scaleMode, setScaleMode] = useState<'fit'|'fill'>('fit')
   const [muted, setMuted] = useState<boolean>(false)
   const [progress, setProgress] = useState<number>(0)
@@ -54,7 +63,6 @@ export default function VodPage(){
           setPlaylist([{ id: -1, hls_url: singleSrc, title: 'Single Video' }])
           setCurrentIndex(0)
         } else {
-          // No params — load all videos as default playlist
           const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('list failed')
           const data = await res.json()
@@ -68,7 +76,7 @@ export default function VodPage(){
     })()
   }, [collectionId, currentId, singleSrc])
 
-  const title = useMemo(()=> current?.title || current?.original_filename || '—', [current])
+  const title = useMemo(()=> label(current || {} as VodItem), [current])
   const description = useMemo(()=> current?.description || '', [current])
   const likes = current?.likes ?? 0
 
@@ -91,88 +99,97 @@ export default function VodPage(){
   const aspect = videoWH.h ? (videoWH.w / videoWH.h) : (16/9)
   const padTop = `${(1 / aspect) * 100}%`
 
+  const upNext = playlist.slice(currentIndex+1, currentIndex+6)
+
   return (
     <main role="main">
     <section className="section" style={{ paddingTop:40 }}>
-      <div className="card" style={{ display:'grid', gridTemplateColumns:'1fr 280px', gap:16 }}>
-        <div style={{ position:'relative', width:'100%' }}>
-          <div style={{ width:'100%', paddingTop: padTop }} />
-          <div style={{ position:'absolute', inset:0 }}>
-            {current && (
-              <VodPlayer
-                ref={playerRef}
-                src={current.hls_url}
-                autoplay
-                muted={muted}
-                scaleMode={scaleMode}
-                onPlayChange={()=> setShowUi(true)}
-                onTimeUpdate={onTime}
-                onError={(m)=> console.warn(m)}
-                onMetadata={({ width, height })=> setVideoWH({ w: width, h: height })}
-              />
-            )}
-            {/* UI overlay */}
-            <div style={{ position:'absolute', inset:0, pointerEvents:'none', transition:'opacity .3s', opacity: showUi ? 1 : 0 }}>
-              <button className="pill" style={{ position:'absolute', top:16, right:16, pointerEvents:'auto' }} onClick={()=> setMuted(m => !m)}>
-                {muted ? '🔇' : '🔊'}
-              </button>
-              <button className="pill" style={{ position:'absolute', top:16, right:76, pointerEvents:'auto' }} onClick={()=> setScaleMode(m => m==='fit'?'fill':'fit')}>
-                ⛶
-              </button>
-              <div style={{ position:'absolute', bottom:18, left:'2%', width:'96%', height:5, background:'rgba(255,255,255,0.3)', pointerEvents:'auto', borderRadius:3 }}
-                onClick={(e)=>{
-                  if(!playerRef.current) return
-                  const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                  const ratio = (e.clientX - rect.left) / rect.width
-                  playerRef.current.setCurrentTime(ratio * duration)
-                }}
-              >
-                <div style={{ width:`${percent}%`, height:'100%', background:'var(--brand-2)' }} />
+      {/* Player + Sidebar */}
+      <div className="vod-player-layout">
+        <div className="vod-player-main">
+          <div style={{ position:'relative', width:'100%', background:'#000', borderRadius:'var(--radius-md)', overflow:'hidden' }}>
+            <div style={{ width:'100%', paddingTop: padTop }} />
+            <div style={{ position:'absolute', inset:0 }}>
+              {current && (
+                <VodPlayer
+                  ref={playerRef}
+                  src={current.hls_url}
+                  autoplay
+                  muted={muted}
+                  scaleMode={scaleMode}
+                  onPlayChange={()=>{}}
+                  onTimeUpdate={onTime}
+                  onError={(m)=> console.warn(m)}
+                  onMetadata={({ width, height })=> setVideoWH({ w: width, h: height })}
+                />
+              )}
+              {/* Controls overlay */}
+              <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+                <button className="pill" style={{ position:'absolute', top:12, right:12, pointerEvents:'auto' }} onClick={()=> setMuted(m => !m)}>
+                  {muted ? '🔇' : '🔊'}
+                </button>
+                <button className="pill" style={{ position:'absolute', top:12, right:68, pointerEvents:'auto' }} onClick={()=> setScaleMode(m => m==='fit'?'fill':'fit')}>
+                  ⛶
+                </button>
+                <div style={{ position:'absolute', bottom:0, left:0, width:'100%', height:4, background:'rgba(255,255,255,0.2)', pointerEvents:'auto', cursor:'pointer' }}
+                  onClick={(e)=>{
+                    if(!playerRef.current) return
+                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                    const ratio = (e.clientX - rect.left) / rect.width
+                    playerRef.current.setCurrentTime(ratio * duration)
+                  }}
+                >
+                  <div style={{ width:`${percent}%`, height:'100%', background:'var(--brand-2)', transition:'width .1s linear' }} />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div style={{ display:'grid', gap:8, alignContent:'start' }}>
-          <div className="muted" style={{ fontSize:12 }}>Up next</div>
-          {playlist.slice(currentIndex+1, currentIndex+4).map((v)=> (
-            <button key={v.id} className="flat-card" style={{ textAlign:'left' }} onClick={()=> setCurrentIndex(playlist.findIndex(p=>p.id===v.id))}>
-              <div className="flat-card-inner">
-                <div className="flat-card-title" style={{ fontSize:14 }}>{v.title || v.original_filename}</div>
-                <div className="flat-card-sub" style={{ fontSize:12 }}>{v.description || '—'}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Meta + nav */}
-      <div className="card" style={{ marginTop:12, display:'grid', gap:8 }}>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-          <div>
-            <h3 style={{ margin:'0 0 6px 0' }}>{title}</h3>
-            {description && <p className="muted" style={{ margin:0 }}>{description}</p>}
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button className="pill" onClick={()=> setCurrentIndex(i => Math.max(0, i-1))} disabled={currentIndex<=0}>‹ Prev</button>
-            <button className="pill" onClick={()=> setCurrentIndex(i => Math.min(playlist.length-1, i+1))} disabled={currentIndex>=playlist.length-1}>Next ›</button>
-            <button className="pill" onClick={like}>♥ {likes}</button>
+          {/* Title bar under player */}
+          <div className="vod-meta-bar">
+            <div style={{ flex:1, minWidth:0 }}>
+              <h3 className="vod-meta-title">{title}</h3>
+              {description && <p className="vod-meta-desc">{description}</p>}
+            </div>
+            <div className="vod-meta-actions">
+              <button className="pill" onClick={()=> setCurrentIndex(i => Math.max(0, i-1))} disabled={currentIndex<=0}>‹ Prev</button>
+              <button className="pill" onClick={()=> setCurrentIndex(i => Math.min(playlist.length-1, i+1))} disabled={currentIndex>=playlist.length-1}>Next ›</button>
+              <button className="pill" onClick={like}>♥ {likes}</button>
+            </div>
           </div>
         </div>
-        {playlist.length>1 && (
-          <div className="flat-grid">
-            {playlist.map((v, i)=> (
-              <button key={v.id} className="flat-card" style={{ textAlign:'left', cursor:'pointer', borderColor: i===currentIndex? 'var(--brand-2)': 'var(--ring)'}} onClick={()=> setCurrentIndex(i)}>
-                <div className="flat-card-inner">
-                  <div className="flat-card-title" style={{ fontSize:14 }}>{v.title || v.original_filename}</div>
-                  <div className="flat-card-sub" style={{ fontSize:12 }}>{v.description || '—'}</div>
-                </div>
+
+        {/* Up Next sidebar */}
+        {upNext.length > 0 && (
+          <div className="vod-sidebar">
+            <div className="vod-sidebar-label">Up next</div>
+            {upNext.map((v) => (
+              <button key={v.id} className="vod-sidebar-item" onClick={()=> setCurrentIndex(playlist.findIndex(p=>p.id===v.id))}>
+                <img className="vod-sidebar-thumb" src={thumb(v)} alt="" loading="lazy" />
+                <span className="vod-sidebar-title">{label(v)}</span>
               </button>
             ))}
           </div>
         )}
       </div>
+
+      {/* Full playlist grid */}
+      {playlist.length > 1 && (
+        <div style={{ marginTop:24 }}>
+          <div className="vod-grid">
+            {playlist.map((v, i) => (
+              <button key={v.id} className={`vod-grid-item${i === currentIndex ? ' active' : ''}`} onClick={()=> setCurrentIndex(i)}>
+                <div className="vod-grid-thumb-wrap">
+                  <img className="vod-grid-thumb" src={thumb(v)} alt="" loading="lazy" />
+                  {i === currentIndex && <div className="vod-grid-playing">Playing</div>}
+                </div>
+                <span className="vod-grid-title">{label(v)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
     </main>
   )
 }
-
