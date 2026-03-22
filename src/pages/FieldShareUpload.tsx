@@ -133,7 +133,7 @@ export default function FieldShareUpload(){
         if((data as any)?.id){ uploadedIds.push((data as any).id as number) }
       }
       // After upload, always open ImageShare V2 starting at the first item
-      let link = uploadedIds.length ? `/share/imageshare-v2?current_id=${uploadedIds[0]}` : ''
+      let link = uploadedIds.length ? `/share/v2?current_id=${uploadedIds[0]}` : ''
       if(uploadedIds.length){ navigate(link) }
       setGeneratedLink(link)
       setSuccess(true)
