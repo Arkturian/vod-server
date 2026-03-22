@@ -5,7 +5,7 @@ import { Text3D } from '@react-three/drei'
 import type { IAnimationStrategy, AnimationComponentProps } from './IAnimationStrategy'
 import { useAnimationStore } from '../../state/useAnimationStore'
 
-const FONT_URL = 'https://unpkg.com/three@0.158.0/examples/fonts/helvetiker_regular.typeface.json'
+const FONT_URL = '/fonts/helvetiker_regular.typeface.json'
 
 const OrbitLettersAnimation: React.FC<AnimationComponentProps> = ({ text }) => {
   const radius = useAnimationStore(s => (s.config.radius ?? 5) as number)

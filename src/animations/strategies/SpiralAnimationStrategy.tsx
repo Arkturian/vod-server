@@ -32,7 +32,7 @@ const SpiralAnimation: React.FC<AnimationComponentProps> = ({ text }) => {
       {text.split('').map((char, index) => (
         <Text3D
           key={index}
-          font={'https://unpkg.com/three@0.158.0/examples/fonts/helvetiker_regular.typeface.json'}
+          font={'/fonts/helvetiker_regular.typeface.json'}
           position={curve.getPoint(index / Math.max(1, (text.length - 1)))}
           size={0.8}
         >
