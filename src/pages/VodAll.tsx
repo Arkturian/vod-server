@@ -40,6 +40,7 @@ export default function VodAll(){
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [collections, setCollections] = useState<Collection[]>([])
+  const [activeCollections, setActiveCollections] = useState<Set<string> | null>(null) // null = not yet initialized
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [ctxSearch, setCtxSearch] = useState('')
   const [assigning, setAssigning] = useState(false)
@@ -80,6 +81,32 @@ export default function VodAll(){
         }
       } catch(e){ console.error('Failed to load collections', e) }
     })()
+  }, [])
+
+  // Derive which collections are actually used by items
+  const usedCollections = useMemo(() => {
+    const usedIds = new Set(items.map(i => i.collection_id).filter(Boolean) as string[])
+    return collections.filter(c => usedIds.has(c.id))
+  }, [items, collections])
+
+  const hasUncollected = useMemo(() => items.some(i => !i.collection_id), [items])
+
+  // Initialize activeCollections once data is loaded (all active by default)
+  useEffect(() => {
+    if (activeCollections !== null || items.length === 0) return
+    const all = new Set(usedCollections.map(c => c.id))
+    if (hasUncollected) all.add('__none__')
+    setActiveCollections(all)
+  }, [usedCollections, hasUncollected, items, activeCollections])
+
+  const toggleCollection = useCallback((id: string) => {
+    setActiveCollections(prev => {
+      if (!prev) return prev
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }, [])
 
   // Close context menu on click outside
@@ -177,6 +204,12 @@ export default function VodAll(){
     let result = items
     if(filter === 'image') result = result.filter(i => i.mime_type?.startsWith('image/'))
     if(filter === 'video') result = result.filter(i => i.mime_type?.startsWith('video/'))
+    if(activeCollections !== null){
+      result = result.filter(i => {
+        if(!i.collection_id) return activeCollections.has('__none__')
+        return activeCollections.has(i.collection_id)
+      })
+    }
     if(search.trim()){
       const q = search.toLowerCase()
       result = result.filter(i =>
@@ -193,7 +226,7 @@ export default function VodAll(){
       return da < db ? -1 : da > db ? 1 : a.id - b.id
     })
     return result
-  }, [items, filter, sort, search])
+  }, [items, filter, sort, search, activeCollections])
 
   const imageCount = items.filter(i => i.mime_type?.startsWith('image/')).length
   const videoCount = items.filter(i => i.mime_type?.startsWith('video/')).length
@@ -244,6 +277,28 @@ export default function VodAll(){
                 <option value="oldest">Oldest first</option>
               </select>
             </div>
+          </div>
+        )}
+
+        {!loading && !error && activeCollections !== null && usedCollections.length > 0 && (
+          <div className="vodall-collection-filters">
+            {hasUncollected && (
+              <button
+                className={`vodall-collection-chip${activeCollections.has('__none__') ? ' active' : ''}`}
+                onClick={() => toggleCollection('__none__')}
+              >
+                Ohne Kollektion
+              </button>
+            )}
+            {usedCollections.map(c => (
+              <button
+                key={c.id}
+                className={`vodall-collection-chip${activeCollections.has(c.id) ? ' active' : ''}`}
+                onClick={() => toggleCollection(c.id)}
+              >
+                {c.name}
+              </button>
+            ))}
           </div>
         )}
 

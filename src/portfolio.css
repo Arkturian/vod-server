@@ -108,6 +108,13 @@ a,button{cursor:pointer}
   .vodall-search{flex:1}
 }
 
+/* Collection filters */
+.vodall-collection-filters{display:flex; gap:6px; flex-wrap:wrap; padding:0 18px; margin-bottom:16px}
+.vodall-collection-chip{padding:4px 12px; border-radius:999px; border:1px solid var(--ring); background:transparent; color:var(--muted); font-size:12px; cursor:pointer; transition:.15s background-color,.15s border-color,.15s color,.15s opacity}
+.vodall-collection-chip:hover{background:rgba(0,0,0,.04)}
+.vodall-collection-chip.active{background:var(--brand-2); color:#fff; border-color:transparent}
+.vodall-collection-chip:not(.active){opacity:.55}
+
 /* Selection */
 .masonry-item{cursor:pointer; border-radius:var(--radius-md); transition:outline .1s ease, opacity .1s ease}
 .masonry-item.selected{outline:3px solid var(--brand-2); outline-offset:2px; border-radius:var(--radius-md)}
