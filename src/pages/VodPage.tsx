@@ -4,8 +4,10 @@ import type { VodPlayerHandle } from '../components/VodPlayer'
 
 type VodItem = {
   id: number
-  hls_url: string
+  hls_url?: string | null
+  file_url?: string | null
   thumbnail_url?: string
+  mime_type?: string
   title?: string
   description?: string
   original_filename?: string
@@ -20,9 +22,23 @@ function thumb(item: VodItem){
   return `${API_BASE_URL}/storage/media/${item.id}?variant=thumbnail&format=jpg`
 }
 
+function fullSrc(item: VodItem){
+  return item.file_url || `${API_BASE_URL}/storage/media/${item.id}`
+}
+
 function label(item: VodItem){
   return item.title || item.original_filename?.replace(/\.[^.]+$/, '') || `#${item.id}`
 }
+
+function isVideo(item: VodItem){
+  return !!item.hls_url || item.mime_type?.startsWith('video/')
+}
+
+function isImage(item: VodItem){
+  return item.mime_type?.startsWith('image/')
+}
+
+type MediaFilter = 'all' | 'image' | 'video'
 
 export default function VodPage(){
   const url = new URL(window.location.href)
@@ -30,16 +46,25 @@ export default function VodPage(){
   const currentId = url.searchParams.get('current_id')
   const singleSrc = url.searchParams.get('src')
 
-  const [playlist, setPlaylist] = useState<VodItem[]>([])
+  const [allItems, setAllItems] = useState<VodItem[]>([])
   const [currentIndex, setCurrentIndex] = useState<number>(-1)
   const [scaleMode, setScaleMode] = useState<'fit'|'fill'>('fit')
   const [muted, setMuted] = useState<boolean>(false)
   const [progress, setProgress] = useState<number>(0)
   const [duration, setDuration] = useState<number>(0)
   const [videoWH, setVideoWH] = useState<{ w:number; h:number }>({ w:16, h:9 })
+  const [filter, setFilter] = useState<MediaFilter>('all')
   const playerRef = useRef<VodPlayerHandle | null>(null)
 
-  const current = currentIndex >=0 ? playlist[currentIndex] : null
+  // Filter items
+  const playlist = useMemo(() => {
+    if(filter === 'all') return allItems
+    if(filter === 'video') return allItems.filter(isVideo)
+    return allItems.filter(isImage)
+  }, [allItems, filter])
+
+  const current = currentIndex >=0 && currentIndex < playlist.length ? playlist[currentIndex] : null
+  const currentIsVideo = current ? isVideo(current) : false
 
   useEffect(()=>{
     (async ()=>{
@@ -48,8 +73,11 @@ export default function VodPage(){
           const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&mine=false&collection_id=${collectionId}`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('collection load failed')
           const data = await res.json()
-          const items = (data.items as VodItem[]).filter(i => i.hls_url)
-          setPlaylist(items)
+          const items = (data.items as VodItem[]).filter(i => {
+            const m = i.mime_type || ''
+            return m.startsWith('image/') || m.startsWith('video/')
+          })
+          setAllItems(items)
           if(items.length){
             const idx = currentId ? items.findIndex(v => String(v.id) === String(currentId)) : 0
             setCurrentIndex(idx >=0 ? idx : 0)
@@ -58,17 +86,20 @@ export default function VodPage(){
           const res = await fetch(`${API_BASE_URL}/storage/objects/${currentId}`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('object load failed')
           const item = await res.json() as VodItem
-          if(item.hls_url){ setPlaylist([item]); setCurrentIndex(0) }
+          setAllItems([item]); setCurrentIndex(0)
         } else if(singleSrc){
-          setPlaylist([{ id: -1, hls_url: singleSrc, title: 'Single Video' }])
+          setAllItems([{ id: -1, hls_url: singleSrc, title: 'Single Video', mime_type: 'video/mp4' }])
           setCurrentIndex(0)
         } else {
           const res = await fetch(`${API_BASE_URL}/storage/list?limit=5000&mine=false`, { headers:{ 'X-API-KEY': API_KEY } })
           if(!res.ok) throw new Error('list failed')
           const data = await res.json()
-          const items = (data.items as VodItem[]).filter((i: any) => i.hls_url)
+          const items = (data.items as VodItem[]).filter((i: VodItem) => {
+            const m = i.mime_type || ''
+            return m.startsWith('image/') || m.startsWith('video/')
+          })
           if(items.length){
-            setPlaylist(items)
+            setAllItems(items)
             setCurrentIndex(0)
           }
         }
@@ -85,7 +116,7 @@ export default function VodPage(){
     fetch(`${API_BASE_URL}/storage/objects/${current.id}/like`, { method:'POST', headers:{ 'X-API-KEY': API_KEY } })
       .then(r => r.ok ? r.json() : Promise.reject('like failed'))
       .then((it: VodItem)=>{
-        setPlaylist(prev => prev.map(p => p.id === it.id ? { ...p, likes: it.likes } : p))
+        setAllItems(prev => prev.map(p => p.id === it.id ? { ...p, likes: it.likes } : p))
       })
       .catch(console.error)
   }
@@ -95,17 +126,18 @@ export default function VodPage(){
     setDuration(dur || 0)
   }
 
-  // Auto-play when switching videos via up-next or grid
+  // Auto-play when switching to a video
   const prevIndexRef = useRef(currentIndex)
   useEffect(() => {
     if (currentIndex >= 0 && prevIndexRef.current !== currentIndex) {
-      // Small delay to let HLS re-init after src change
-      const t = setTimeout(() => playerRef.current?.play(), 150)
-      prevIndexRef.current = currentIndex
-      return () => clearTimeout(t)
+      if(currentIsVideo){
+        const t = setTimeout(() => playerRef.current?.play(), 150)
+        prevIndexRef.current = currentIndex
+        return () => clearTimeout(t)
+      }
     }
     prevIndexRef.current = currentIndex
-  }, [currentIndex])
+  }, [currentIndex, currentIsVideo])
 
   const percent = duration ? (progress / duration) * 100 : 0
   const aspect = videoWH.h ? (videoWH.w / videoWH.h) : (16/9)
@@ -114,20 +146,46 @@ export default function VodPage(){
   const padTop = isPortrait ? undefined : `${(1 / aspect) * 100}%`
 
   const upNext = playlist.slice(currentIndex+1, currentIndex+6)
+  const imageCount = allItems.filter(isImage).length
+  const videoCount = allItems.filter(isVideo).length
+
+  // Reset index when filter changes
+  useEffect(() => {
+    if(playlist.length > 0) setCurrentIndex(0)
+    else setCurrentIndex(-1)
+  }, [filter])
 
   return (
     <main role="main">
     <section className="section" style={{ paddingTop:40 }}>
-      {/* Player + Sidebar */}
+
+      {/* Filter bar */}
+      {allItems.length > 0 && (
+        <div className="vodall-toolbar" style={{ marginBottom: 20 }}>
+          <div className="vodall-filters">
+            <button className={`vodall-filter-btn${filter === 'all' ? ' active' : ''}`} onClick={() => setFilter('all')}>
+              All ({allItems.length})
+            </button>
+            <button className={`vodall-filter-btn${filter === 'image' ? ' active' : ''}`} onClick={() => setFilter('image')}>
+              Images ({imageCount})
+            </button>
+            <button className={`vodall-filter-btn${filter === 'video' ? ' active' : ''}`} onClick={() => setFilter('video')}>
+              Videos ({videoCount})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Viewer + Sidebar */}
       <div className="vod-player-layout">
         <div className="vod-player-main">
-          <div style={{ position:'relative', width:'100%', background:'#000', borderRadius:'var(--radius-md)', overflow:'hidden', ...(isPortrait ? { height: maxH } : {}) }}>
-            {!isPortrait && <div style={{ width:'100%', paddingTop: padTop }} />}
-            <div style={{ position:'absolute', inset:0 }}>
-              {current && (
+          <div style={{ position:'relative', width:'100%', background:'#000', borderRadius:'var(--radius-md)', overflow:'hidden', ...(currentIsVideo && isPortrait ? { height: maxH } : !currentIsVideo ? { maxHeight: maxH } : {}) }}>
+            {currentIsVideo && !isPortrait && <div style={{ width:'100%', paddingTop: padTop }} />}
+            {current && currentIsVideo && (
+              <div style={{ position:'absolute', inset:0 }}>
                 <VodPlayer
                   ref={playerRef}
-                  src={current.hls_url}
+                  src={current.hls_url || current.file_url || ''}
                   autoplay
                   muted={muted}
                   scaleMode={scaleMode}
@@ -136,30 +194,37 @@ export default function VodPage(){
                   onError={(m)=> console.warn(m)}
                   onMetadata={({ width, height })=> setVideoWH({ w: width, h: height })}
                 />
-              )}
-              {/* Controls overlay */}
-              <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
-                <button className="pill" style={{ position:'absolute', top:12, right:12, pointerEvents:'auto' }} onClick={()=> setMuted(m => !m)}>
-                  {muted ? '🔇' : '🔊'}
-                </button>
-                <button className="pill" style={{ position:'absolute', top:12, right:68, pointerEvents:'auto' }} onClick={()=> setScaleMode(m => m==='fit'?'fill':'fit')}>
-                  ⛶
-                </button>
-                <div style={{ position:'absolute', bottom:0, left:0, width:'100%', height:4, background:'rgba(255,255,255,0.2)', pointerEvents:'auto', cursor:'pointer' }}
-                  onClick={(e)=>{
-                    if(!playerRef.current) return
-                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                    const ratio = (e.clientX - rect.left) / rect.width
-                    playerRef.current.setCurrentTime(ratio * duration)
-                  }}
-                >
-                  <div style={{ width:`${percent}%`, height:'100%', background:'var(--brand-2)', transition:'width .1s linear' }} />
+                {/* Video controls overlay */}
+                <div style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
+                  <button className="pill" style={{ position:'absolute', top:12, right:12, pointerEvents:'auto' }} onClick={()=> setMuted(m => !m)}>
+                    {muted ? '🔇' : '🔊'}
+                  </button>
+                  <button className="pill" style={{ position:'absolute', top:12, right:68, pointerEvents:'auto' }} onClick={()=> setScaleMode(m => m==='fit'?'fill':'fit')}>
+                    ⛶
+                  </button>
+                  <div style={{ position:'absolute', bottom:0, left:0, width:'100%', height:4, background:'rgba(255,255,255,0.2)', pointerEvents:'auto', cursor:'pointer' }}
+                    onClick={(e)=>{
+                      if(!playerRef.current) return
+                      const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                      const ratio = (e.clientX - rect.left) / rect.width
+                      playerRef.current.setCurrentTime(ratio * duration)
+                    }}
+                  >
+                    <div style={{ width:`${percent}%`, height:'100%', background:'var(--brand-2)', transition:'width .1s linear' }} />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+            {current && !currentIsVideo && (
+              <img
+                src={fullSrc(current)}
+                alt={label(current)}
+                style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }}
+              />
+            )}
           </div>
 
-          {/* Title bar under player */}
+          {/* Title bar */}
           <div className="vod-meta-bar">
             <div style={{ flex:1, minWidth:0 }}>
               <h3 className="vod-meta-title">{title}</h3>
@@ -180,14 +245,17 @@ export default function VodPage(){
             {upNext.map((v) => (
               <button key={v.id} className="vod-sidebar-item" onClick={()=> setCurrentIndex(playlist.findIndex(p=>p.id===v.id))}>
                 <img className="vod-sidebar-thumb" src={thumb(v)} alt="" loading="lazy" />
-                <span className="vod-sidebar-title">{label(v)}</span>
+                <div style={{ display:'flex', flexDirection:'column', gap:2, minWidth:0 }}>
+                  <span className="vod-sidebar-title">{label(v)}</span>
+                  <span style={{ fontSize:11, color:'var(--muted)' }}>{isVideo(v) ? 'Video' : 'Image'}</span>
+                </div>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Full playlist grid */}
+      {/* Full grid */}
       {playlist.length > 1 && (
         <div style={{ marginTop:24 }}>
           <div className="vod-grid">
@@ -195,7 +263,8 @@ export default function VodPage(){
               <button key={v.id} className={`vod-grid-item${i === currentIndex ? ' active' : ''}`} onClick={()=> setCurrentIndex(i)}>
                 <div className="vod-grid-thumb-wrap">
                   <img className="vod-grid-thumb" src={thumb(v)} alt="" loading="lazy" />
-                  {i === currentIndex && <div className="vod-grid-playing">Playing</div>}
+                  {i === currentIndex && <div className="vod-grid-playing">Viewing</div>}
+                  {isVideo(v) && i !== currentIndex && <div className="vod-grid-badge">▶</div>}
                 </div>
                 <span className="vod-grid-title">{label(v)}</span>
               </button>
