@@ -38,7 +38,11 @@ function isImage(item: VodItem){
   return item.mime_type?.startsWith('image/')
 }
 
-type MediaFilter = 'all' | 'image' | 'video'
+function isAudio(item: VodItem){
+  return item.mime_type?.startsWith('audio/')
+}
+
+type MediaFilter = 'all' | 'image' | 'video' | 'audio'
 
 export default function VodPage(){
   const url = new URL(window.location.href)
@@ -60,6 +64,7 @@ export default function VodPage(){
   const playlist = useMemo(() => {
     if(filter === 'all') return allItems
     if(filter === 'video') return allItems.filter(isVideo)
+    if(filter === 'audio') return allItems.filter(isAudio)
     return allItems.filter(isImage)
   }, [allItems, filter])
 
@@ -75,7 +80,7 @@ export default function VodPage(){
           const data = await res.json()
           const items = (data.items as VodItem[]).filter(i => {
             const m = i.mime_type || ''
-            return m.startsWith('image/') || m.startsWith('video/')
+            return m.startsWith('image/') || m.startsWith('video/') || m.startsWith('audio/')
           })
           setAllItems(items)
           if(items.length){
@@ -96,7 +101,7 @@ export default function VodPage(){
           const data = await res.json()
           const items = (data.items as VodItem[]).filter((i: VodItem) => {
             const m = i.mime_type || ''
-            return m.startsWith('image/') || m.startsWith('video/')
+            return m.startsWith('image/') || m.startsWith('video/') || m.startsWith('audio/')
           })
           if(items.length){
             setAllItems(items)
@@ -148,6 +153,7 @@ export default function VodPage(){
   const upNext = playlist.slice(currentIndex+1, currentIndex+6)
   const imageCount = allItems.filter(isImage).length
   const videoCount = allItems.filter(isVideo).length
+  const audioCount = allItems.filter(isAudio).length
 
   // Reset index when filter changes
   useEffect(() => {
@@ -172,6 +178,11 @@ export default function VodPage(){
             <button className={`vodall-filter-btn${filter === 'video' ? ' active' : ''}`} onClick={() => setFilter('video')}>
               Videos ({videoCount})
             </button>
+            {audioCount > 0 && (
+              <button className={`vodall-filter-btn${filter === 'audio' ? ' active' : ''}`} onClick={() => setFilter('audio')}>
+                Audio ({audioCount})
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -215,12 +226,25 @@ export default function VodPage(){
                 </div>
               </div>
             )}
-            {current && !currentIsVideo && (
+            {current && !currentIsVideo && !isAudio(current) && (
               <img
                 src={fullSrc(current)}
                 alt={label(current)}
                 style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }}
               />
+            )}
+            {current && isAudio(current) && (
+              <div className="vod-audio-viewer">
+                <div className="vod-audio-icon">♫</div>
+                <div className="vod-audio-title">{label(current)}</div>
+                <audio
+                  key={current.id}
+                  controls
+                  autoPlay
+                  src={fullSrc(current)}
+                  style={{ width:'100%', maxWidth:480 }}
+                />
+              </div>
             )}
           </div>
 
@@ -247,7 +271,7 @@ export default function VodPage(){
                 <img className="vod-sidebar-thumb" src={thumb(v)} alt="" loading="lazy" />
                 <div style={{ display:'flex', flexDirection:'column', gap:2, minWidth:0 }}>
                   <span className="vod-sidebar-title">{label(v)}</span>
-                  <span style={{ fontSize:11, color:'var(--muted)' }}>{isVideo(v) ? 'Video' : 'Image'}</span>
+                  <span style={{ fontSize:11, color:'var(--muted)' }}>{isVideo(v) ? 'Video' : isAudio(v) ? 'Audio' : 'Image'}</span>
                 </div>
               </button>
             ))}
@@ -265,6 +289,7 @@ export default function VodPage(){
                   <img className="vod-grid-thumb" src={thumb(v)} alt="" loading="lazy" />
                   {i === currentIndex && <div className="vod-grid-playing">Viewing</div>}
                   {isVideo(v) && i !== currentIndex && <div className="vod-grid-badge">▶</div>}
+                  {isAudio(v) && i !== currentIndex && <div className="vod-grid-badge">♫</div>}
                 </div>
                 <span className="vod-grid-title">{label(v)}</span>
               </button>
