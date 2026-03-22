@@ -43,6 +43,16 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
   const uiTimeoutRef = useRef<number | null>(null)
   const [fullscreenMode, setFullscreenMode] = useState<'fit'|'fill'>('fit')
 
+  // Stable refs for callbacks to avoid re-triggering HLS setup
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
+  const onMetadataRef = useRef(onMetadata)
+  onMetadataRef.current = onMetadata
+  const onPlayChangeRef = useRef(onPlayChange)
+  onPlayChangeRef.current = onPlayChange
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  onTimeUpdateRef.current = onTimeUpdate
+
   useImperativeHandle(ref, ()=>({
     play: ()=> videoRef.current?.play(),
     pause: ()=> videoRef.current?.pause(),
@@ -77,9 +87,9 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
         hls = new Hls({ enableWorker: true })
         hls.loadSource(src)
         hls.attachMedia(v)
-        hls.on(Hls.Events.ERROR, ()=> onError?.('Stream error'))
+        hls.on(Hls.Events.ERROR, ()=> onErrorRef.current?.('Stream error'))
       } else {
-        onError?.('HLS not supported')
+        onErrorRef.current?.('HLS not supported')
       }
     } else {
       v.src = src
@@ -88,7 +98,7 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
     return ()=>{
       if(hls){ hls.destroy() }
     }
-  }, [src, onError])
+  }, [src])
 
   // Pause video when not active; play when active (if autoplay)
   useEffect(()=>{
@@ -104,10 +114,10 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
   useEffect(()=>{
     const v = videoRef.current
     if(!v) return
-    const onPlay = ()=> { onPlayChange?.(true); setShowUi(true); if(uiTimeoutRef.current) window.clearTimeout(uiTimeoutRef.current); uiTimeoutRef.current = window.setTimeout(()=> setShowUi(false), 2000) as unknown as number }
-    const onPause = ()=> { onPlayChange?.(false); setShowUi(true) }
-    const onTime = ()=> { onTimeUpdate?.(v.currentTime, v.duration); setProgress(v.currentTime); setDuration(v.duration || 0) }
-    const onMeta = ()=> onMetadata?.({ width: v.videoWidth, height: v.videoHeight })
+    const onPlay = ()=> { onPlayChangeRef.current?.(true); setShowUi(true); if(uiTimeoutRef.current) window.clearTimeout(uiTimeoutRef.current); uiTimeoutRef.current = window.setTimeout(()=> setShowUi(false), 2000) as unknown as number }
+    const onPause = ()=> { onPlayChangeRef.current?.(false); setShowUi(true) }
+    const onTime = ()=> { onTimeUpdateRef.current?.(v.currentTime, v.duration); setProgress(v.currentTime); setDuration(v.duration || 0) }
+    const onMeta = ()=> onMetadataRef.current?.({ width: v.videoWidth, height: v.videoHeight })
     v.addEventListener('play', onPlay)
     v.addEventListener('pause', onPause)
     v.addEventListener('timeupdate', onTime)
@@ -118,7 +128,7 @@ const VodPlayer = forwardRef<VodPlayerHandle, VodPlayerProps>(function VodPlayer
       v.removeEventListener('timeupdate', onTime)
       v.removeEventListener('loadedmetadata', onMeta)
     }
-  }, [onPlayChange, onTimeUpdate, onMetadata])
+  }, [])
 
   useEffect(()=>{
     const onFs = ()=> setIsFullscreen(!!document.fullscreenElement)
